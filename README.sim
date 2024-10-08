@@ -1,0 +1,178 @@
+t0 Visual Linux
+
+
+
+
+t1 Overview
+
+p \iVisual Linux\i is a graphical simulation application showing how the Linux kernel execution works. \
+This simulator includes memory usage in CPU cache, control flow between user and kernel code, exception handling and more.
+b
+
+
+t2 Disclaimer on exactness
+
+p This application shows \ba \cff0000simplified\c representation\b of the Linux kernel mechanisms. \
+These are not exactly what the Linux kernel code does. \
+The CPU instruction set is completely fictive as well as the long term storage use. \
+We mostly concentrates on execution & short term memory management between kernel and user "code".
+
+p Also, for more simplicity, CPU is the only interface with hardware in this simulation program. \
+Operations such as printing text or accessing to long term storage are assumed by the CPU instead of using other devices.
+
+l This project has been made for educational purpose only.
+
+
+t2 How does it work
+
+p To simulate kernel loading and boot sequence, \iVisualLinux\i will require to have a kind of "hard drive" \
+represented by a directory given when executing the program. \
+In this directory, a file \mkernel.hc\m must exist. \
+It is the main program (and also the first one) that will be executed.
+
+p Other programs which are \buser\b programs can be executed afterwards. \
+When the (virtual) kernel will access to its "long term storage" to load a user program, it will look in that same storage directory \
+for the corresponding \m.uc\m file to load. \
+Therefore, you are completely free to create as much user programs as you want. \
+Note that the file is written under an "UC" syntax : \
+this action is similar to writting directly compiled ELF code onto disk so a specific synatx must be respected.
+
+p The syntaxes used in that project are very specific (and simplified to be understood). \
+Full descriptions are available below but you may not need to learn them to use \i\i at first. \
+Infact, before trying to do things yourself, some examples have already been made ready-to-use in the \mstorage/\m directory. \
+You better run them first and then, if curious, dig into the code to make yours.
+
+
+
+
+t1 Use
+
+t2 Requirements
+
+l This program has been made to run on GNU/Linux operating systems.
+
+p If you already have the compiled \iVisualLinux\i application on your computer, nothing else is required. \
+However, to compile this project you will require package \mfreeglut3-dev\m.
+" bash
+sudo apt install freeglut3-dev #on apt based distros
+"
+
+
+t2 Compile & Run
+
+l To compile \iVisual Linux\i :
+" bash
+bld/build
+"
+l The resulted application should be available under \mapp/VisualLinux\m.
+
+l To execute \iVisual Linux\i :
+" bash
+app/VisualLinux <storage_dir> #example: "app/VisualLinux storage/example1/"
+"
+l Enjoy using the examples given in the \mstorage/\m directory.
+
+l The next chapter is about how to make your own kernel and user codes yourself, so you can skip it if not interrested.
+
+
+
+
+t1 We need to go deeper
+
+t2 HC and UC
+
+p As said before, the CPU instruction set is completely custom. \
+As the CPU is the only interface we use for hardware interactions, I invented the \bHC\b syntax (= "Hardware Code") for the occasion \
+which is nothing more than CPU instructions directly written in a file, one instruction per line. \
+This syntax is highly restrictive making things easy for our "virtual CPU" to operate.
+
+p However, you may know that the format we use in executable files for Linux kernel on disk (basically ELF) \
+is not meant to directly operate with hardware but it is loaded into memory under a slightly different format to then, be correctly used by hardware. \
+The kernel does some stuff to turn something written \uby\u "users" \ufor\u the kernel into something \ufor\u the hardware itself.
+
+p For this reason, I also decided to make a user executable code syntax (in analogy with ELF, DWARF...) : the \bUC\b syntax (= "User Code"). \
+This is the format that \bMUST\b be used in user programs to be correctly loaded \uby\u the kernel into HC format. \
+(Note that at the end, everything will become HC since it is the only syntax that the CPU understands).
+
+
+t2 HC in details
+
+p Explaining HC is very very simple ; using it for complex stuff is not that cool. \
+Anyway, each HC instruction is composed of 8 bytes (ascii letters and numbers only). \
+If a line has more than those bytes, \iVisualLinux\i stops raising an error.
+
+p The file format used is basic Linux text files so each line ends with a single LINE FEED character (\m0x0a\m). \
+This character serves as delimiter for separating HC instructions. \
+\b\cff0000Even the last line must terminate with a LINE FEED.\c\b \
+Empty lines are not allowed.
+
+p In an HC instruction, the first 3 bytes concerns the name of the instruction, and the 5 following bytes gives a parameter to that instruction. \
+The first byte in the instruction name can be either \mk\m or \mu\m designating if the instruction is to be executed respectively in "kernel" or "user" mode. \
+The next 2 bytes gives the name of the instruction. \
+Here is the list of all instruction names with their signification :
+- PR
+Print onto virtual screen the 0-terminated string at the address given as parameter.
+-
+- Mr
+Read value in the "Move buffer" and set it into the given parameter (parameter can't be a value).
+-
+- Mw
+Write value of the given parameter into the "Move buffer".
+-
+- AD
+Perform an addition between registers R0001 and R0002 and write result into R0001.
+-
+p The instruction parameter is composed of a type byte header (the 4th byte) followed by 4 hexadecimal numbers giving its value. \
+Depending on the type header byte, the given parameter will be :
+- "V"
+A literal value (hexadecimal number)
+-
+- "R"
+A register (from R0001 to R0008)
+-
+l Usually, instructions not requiring a parameter are set to \mV0000\m.
+
+
+t2 UC in details
+
+p TODO
+
+
+t2 Producing kernel code
+
+p As said before, the kernel code is the main and first program that will be used in our computer (simulator). \
+The thing is that we can't use UC syntax to load it (can't load himself since he is not here). \
+So we must have an "already loaded" HC syntax to give to \iVisualLinux\i so that it can barely execute the kernel code without operating anything else.
+
+p The thing is that the kernel code is not that simple to write and can be pretty big \
+so writing it directly in HC syntax becomes quickly unfair and unmaintainable. \
+For this reason, when compiling \iVisualLinux\i, another program is produced alongside the main application : \mUC2kHC\m. \
+This program allows you to compile a UC file into an HC one as a "regular" kernel will have done, \
+\cff0000\bexcept that\b\c resulted instruction will not be set in "user" mode but in "kernel" mode.
+
+p Here is an example of how to produce its own kernel code :
+" bash
+#write my own kernel in regular UC
+mkdir storage/myCustomOS
+nano  storage/myCustomOS/kernel.uc
+
+#compile it into HC with "kernel" mode instructions
+app/UC2kHC storage/myCustomOS/kernel.uc > storage/myCustomOS/kernel.hc
+
+#use the generated "kernel.hc" file
+app/VisualLinux storage/myCustomOS
+"
+l There you go !
+
+b
+
+l You should have everything you need to work with \iVisual Linux\i, enjoy !
+
+b
+b
+
+l Contact    : \li.a.sebsil83@gmail.com\l\l
+l Youtube    : \lhttps://www.youtube.com/user/IAsebsil83\l\l
+l Repository : \lhttps://github.com/iasebsil83\l\l
+
+l Let's Code !\arBy I.A.
