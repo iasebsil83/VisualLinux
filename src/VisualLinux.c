@@ -20,12 +20,13 @@
 // ---------------- DECLARATIONS ----------------
 
 //S2DE variables
-extern unsigned int S2DE_width;
-extern unsigned int S2DE_height;
+extern unsigned int   S2DE_width;
+extern unsigned int   S2DE_height;
+extern unsigned short S2DE_key;
 
 //VisualLinux constants
-#define WINDOW_WIDTH  1280
-#define WINDOW_HEIGHT 1080
+#define WINDOW_DEFAULT_WIDTH  720
+#define WINDOW_DEFAULT_HEIGHT 1280
 
 
 
@@ -34,24 +35,14 @@ extern unsigned int S2DE_height;
 
 // ---------------- KERNEL / USER ----------------
 
-//computer instance
-cpt* getComputer() {
+//computer instance (both setter & getter)
+#define GET NULL
+cpt* computerAccess(cpt* access) {
 	static cpt* computer;
-	return computer;
-}
-void initComputer() {
-	cpt* c = malloc(sizeof(cpt));
-	c->programLines = malloc(sizeof(ulng));
-	c->ram          = malloc(sizeof(ulng));
-	return c;
-}
-
-//run next instruction only
-void runNext() {
-	cpt* computer = getComputer();
-
-	//get to the next instruction
-	operateCPU();
+	if(access != GET) {
+		computer = (cpt*)access; //either SET & GET
+	}
+	return computer; //or only GET
 }
 
 
@@ -63,22 +54,19 @@ void runNext() {
 
 //events
 void S2DE_event(int event){
+	cpt* computer = computerAccess(GET);
 	switch(event){
 		case S2DE_DISPLAY:
 
-			//white background
-			S2DE_setColor(255,255,255);
-			S2DE_rectangle(0,0, S2DE_width,S2DE_height, true);
-
 			//current program lines
-			displayProgram();
+			displayInstructions(DT__INSTRUCTIONS_X, DT__INSTRUCTIONS_Y, computer);
 
 			//memory
-			displayCPURegisters();
-			displayRAM();
+			displayCPUMems(DT__CPUMEMS_X, DT__CPUMEMS_Y, computer);
+			displayRAM(DT__RAM_X, DT__RAM_Y, computer);
 
 			//virtual screen
-			displayScreen();
+			displayScreen(DT__SCREEN_X, DT__SCREEN_Y, NULL);
 		break;
 
 		case S2DE_KEYBOARD:
@@ -86,7 +74,7 @@ void S2DE_event(int event){
 
 				//move forward just one step
 				case S2DE_KEY_LEFT:
-					runNext();
+					operateCPU(computer);
 				break;
 			}
 		break;
@@ -118,12 +106,15 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-	//try loading kernel
-	cpt* computer = newComputer();
-	loadKernel(argv[1], computer->programLines);
+	//create computer instance AND set also its static pointer to allow global access
+	cpt* computer = computerAccess( newComputer(argv[1]) );
+
+	//load kernel HC program
+	loadKernel(computer);
 
 	//launch window
-	S2DE_init(argc,argv, "Visual Linux", WINDOW_WIDTH, WINDOW_HEIGHT);
+	S2DE_init(argc,argv, "Visual Linux", WINDOW_DEFAULT_WIDTH, WINDOW_DEFAULT_HEIGHT);
+	S2DE_fullScreen();
 	S2DE_start();
 
 	//nothing went wrong

@@ -406,7 +406,7 @@ void S2DE_text(char* text, float size, float x,float y){
 
 	//write text character per character
 	while(*text)
-		glutStrokeCharacter(GLUT_STROKE_ROMAN, *text++);
+		glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, *text++);
 	glPopMatrix();
 }
 

@@ -18,7 +18,9 @@ The CPU instruction set is completely fictive as well as the long term storage u
 We mostly concentrates on execution & short term memory management between kernel and user "code".
 
 p Also, for more simplicity, CPU is the only interface with hardware in this simulation program. \
-Operations such as printing text or accessing to long term storage are assumed by the CPU instead of using other devices.
+Operations such as printing text or accessing to long term storage are assumed by the CPU instead of using other devices. \
+Another thing that you might find weird in this implementation is that we only use one type of memory block : words of 2 bytes (16b). \
+This has also been made to simplify representations and reduce display information.
 
 l This project has been made for educational purpose only.
 
@@ -98,7 +100,7 @@ This is the format that \bMUST\b be used in user programs to be correctly loaded
 t2 HC in details
 
 p Explaining HC is very very simple ; using it for complex stuff is not that cool. \
-Anyway, each HC instruction is composed of 8 bytes (ascii letters and numbers only). \
+Anyway, each HC instruction is composed of 7 bytes (ascii letters and numbers only). \
 If a line has more than those bytes, \iVisualLinux\i stops raising an error.
 
 p The file format used is basic Linux text files so each line ends with a single LINE FEED character (\m0x0a\m). \
@@ -106,23 +108,23 @@ This character serves as delimiter for separating HC instructions. \
 \b\cff0000Even the last line must terminate with a LINE FEED.\c\b \
 Empty lines are not allowed.
 
-p In an HC instruction, the first 3 bytes concerns the name of the instruction, and the 5 following bytes gives a parameter to that instruction. \
+p In an HC instruction, the first 2 bytes concerns the name of the instruction, and the 5 following bytes gives a parameter to that instruction. \
 The first byte in the instruction name can be either \mk\m or \mu\m designating if the instruction is to be executed respectively in "kernel" or "user" mode. \
-The next 2 bytes gives the name of the instruction. \
+The next byte gives the name of the instruction. \
 Here is the list of all instruction names with their signification :
-- PR
+- P
 Print onto virtual screen the 0-terminated string at the address given as parameter.
 -
-- Mr
+- R
 Read value in the "Move buffer" and set it into the given parameter (parameter can't be a value).
 -
-- Mw
+- W
 Write value of the given parameter into the "Move buffer".
 -
-- AD
+- A
 Perform an addition between registers R0001 and R0002 and write result into R0001.
 -
-p The instruction parameter is composed of a type byte header (the 4th byte) followed by 4 hexadecimal numbers giving its value. \
+p The instruction parameter is composed of a type byte header (the 3rd byte) followed by 4 hexadecimal numbers giving its value. \
 Depending on the type header byte, the given parameter will be :
 - "V"
 A literal value (hexadecimal number)
