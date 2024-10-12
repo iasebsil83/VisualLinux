@@ -3,6 +3,7 @@
 //standard
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 
 //own header
@@ -15,63 +16,120 @@
 
 // ---------------- TOOLS ----------------
 
-//default tools...
-char* readFile(char* filename) {
-
-	//read file and get its content size
-	FILE* f = fopen(filename, "r");
-	fseek(f, 0UL, SEEK_END);
-	ulng fileSize = ftell(f);
-
-	//read all
-	fseek(f, 0UL, SEEK_SET);
-	char* content = malloc((fileSize+1) * sizeof(char));
-	ulng readBytes = fread(content, 1, fileSize, f);
-	free(f);
-
-	//error cases
-	if(readBytes != fileSize) {
-		fprintf(stderr, "VisualLinux: Unable to read file \"%s\" properly.\n", filename);
-		exit(EXIT_FAILURE);
-	}
-
-	//no error
-	content[fileSize] = '\0'; //don't forget the terminating '\x00'
-	return content;
-}
-
 //instantiate a new computer
 cpt* newComputer(char* storageDir) {
 	cpt* c = malloc(sizeof(cpt));
-	c->storageDir = storageDir;
 
-	//instructions
-	c->instructions = malloc(CPT__INSTRUCTIONS_LENGTH * sizeof(instruction*));
-	for(ulng i=0ULL; i < CPT__INSTRUCTIONS_LENGTH; i++) { c->instructions[i] = NULL; }
-	c->currentInstructionIndex = 0ULL;
+	//basic stuff
+	c->storageDir              = storageDir;
+	c->currentInstructionIndex = 0;
 
 	//cpu mems
-	c->cpuMems = malloc(CPT__CPUMEMS_LENGTH * sizeof(cpuMem*));
-	for(ulng i=0ULL; i < CPT__CPUMEMS_LENGTH; i++) {
-		c->cpuMems[i] = malloc(sizeof(cpuMem));
-		cpuMem* cm    = c->cpuMems[i]; //just a local shortcut
+	cpuMem** cpuMems = malloc(CPT__CPUMEMS_LENGTH * sizeof(cpuMem*));
+	for(ushr i=0; i < CPT__CPUMEMS_LENGTH; i++) {
+		cpuMems[i] = malloc(sizeof(cpuMem));
+		cpuMem* cm = cpuMems[i];
 
 		//registers
-		cm->registers = malloc(CPT__CPUMEM_REGISTERS_LENGTH * sizeof(short));
-		for(ulng j=0ULL; j < CPT__CPUMEM_REGISTERS_LENGTH; j++) { cm->registers[j] = 0; }
+		ushr* registers = malloc(CPT__CPUMEM_REGISTERS_LENGTH * sizeof(ushr));
+		for(ushr j=0; j < CPT__CPUMEM_REGISTERS_LENGTH; j++) { registers[j] = 0; }
+		cm->registers = registers;
 
 		//stack
-		cm->stack = malloc(CPT__CPUMEM_STACK_LENGTH * sizeof(short));
-		for(ulng j=0ULL; j < CPT__CPUMEM_STACK_LENGTH; j++) { cm->stack[j] = 0; }
+		ushr* stack = malloc(CPT__CPUMEM_STACK_LENGTH * sizeof(ushr));
+		for(ushr j=0; j < CPT__CPUMEM_STACK_LENGTH; j++) { stack[j] = 0; }
+		cm->stack = stack;
 	}
+	c->cpuMems            = cpuMems;
 	c->currentCpuMemIndex = 0ULL;
 
 	//ram
-	c->ram = malloc(CPT__RAM_LENGTH * sizeof(short));
-	for(ulng i=0ULL; i < CPT__RAM_LENGTH; i++) { c->ram[i] = 0; }
+	ushr* ram = malloc(CPT__RAM_LENGTH * sizeof(ushr));
+	for(ushr i=0; i < CPT__RAM_LENGTH; i++) { ram[i] = 0; }
+	c->ram = ram;
+
+	//screen
+	char** screen = malloc(CPT__SCREEN_LENGTH * sizeof(char*));
+	for(ushr s=0ULL; s < CPT__SCREEN_LENGTH; s++) {
+		screen[s]    = malloc(1 * sizeof(char)); //allocate empty string
+		screen[s][0] = '\0';
+	}
+	c->screen = screen;
 
 	//computer initialized
 	return c;
+}
+
+//boudaries check
+void checkRAMAddress(ushr address) {
+	if(address >= CPT__RAM_LENGTH) {
+		fprintf(stderr, "Invalid RAM address %i (maximum %i allowed).", address, CPT__RAM_LENGTH-1);
+		exit(EXIT_FAILURE);
+	}
+}
+ushr getRegisterValue(ushr* currentRegisters, ushr address) {
+	if(address >= CPT__CPUMEM_REGISTERS_LENGTH) {
+		fprintf(stderr, "Invalid register address %i (maximum %i allowed).", address, CPT__CPUMEM_REGISTERS_LENGTH-1);
+		exit(EXIT_FAILURE);
+	}
+
+	//inside boundaries
+	return currentRegisters[address];
+}
+
+//ram strings
+char* readStringFromRAM(ushr* ram, ushr address) {
+	checkRAMAddress(address);
+
+	//read whole RAM from the first
+	ushr currentValue;
+	char c1, c2;
+	ushr length = 0;
+	for(ushr r=address; r < CPT__RAM_LENGTH; r++) {
+		currentValue = ram[r];
+
+		//read 2 by 2
+		c1 = (currentValue & 0xff00) >> 8;
+		c2 =  currentValue & 0x00ff;
+
+		//end of string reached
+		if(c1 == '\0') {           break; }
+		if(c2 == '\0') { length++; break; }
+
+		//not terminated => increase length
+		length += 2;
+	}
+
+	//string creation
+	char* result   = malloc(length+1);
+	ushr  ramIndex = address;
+	for(ushr s=0; s < length; s++) {
+		currentValue = ram[ramIndex];
+
+		//storing firt byte (and not touching RAM index)
+		if(s%2 == 0) { result[s] = (currentValue & 0xff00) >> 8; }
+
+		//storing second byte (and increasing RAM index)
+		else { result[s] = currentValue & 0x00ff; ramIndex++; }
+	}
+	result[length] = '\0';
+
+	//return string
+	return result;
+}
+
+//screen
+void writeOnScreen(char** screen, char* line) {
+
+	//free first line
+	free(screen[0]);
+
+	//shift every lines
+	ushr lastIndex = CPT__SCREEN_LENGTH-1;
+	for(ushr s=0; s < lastIndex; s++) { screen[s] = screen[s+1]; }
+
+	//write new line
+	screen[lastIndex] = line;
 }
 
 
@@ -81,143 +139,139 @@ cpt* newComputer(char* storageDir) {
 
 // ---------------- EXECUTION ----------------
 
-//parse HC code line
-void loadHCContent(char* content, instruction** instructions, ulng startingIndex) {
+//operations
+void loadFromStorage(ushr* ram, ushr startIndex, char* filename) {
+	char* data   = readFile(filename);
+	ushr  length = strlen(data);
 
-	//check length integrity
-	ulng contentLen = strlen(content);
-	if(contentLen%CPT__SINGLE_INSTRUCTION_LENGTH != 0) {
-		fprintf(
-			stderr,
-			"VisualLinux: Invalid number of bytes in HC content (multiples of %llu required, %llu found).\n",
-			CPT__SINGLE_INSTRUCTION_LENGTH,
-			contentLen
-		);
-		exit(EXIT_FAILURE);
-	}
-
-	//check instruction number
-	ulng newInstructionsLen = contentLen / CPT__SINGLE_INSTRUCTION_LENGTH;
-	ulng remainingSlots = CPT__INSTRUCTIONS_LENGTH - startingIndex;
-	if(newInstructionsLen > remainingSlots) {
-		fprintf(
-			stderr,
-			"VisualLinux: Too much instructions taken from HC content (%llu slots remaining, %llu to load).\n",
-			remainingSlots,
-			newInstructionsLen
-		);
-		exit(EXIT_FAILURE);
-	}
-
-	//for each instruction to load
-	ulng instructionsIndex = startingIndex;
-	for(ulng i=0ULL; i < newInstructionsLen; i++) {
-
-		//allocation + lineNbr
-		instructions[instructionsIndex]          = malloc(sizeof(instruction)); //instructions[i] should be NULL
-		instructions[instructionsIndex]->lineNbr = instructionsIndex;
-
-		//text field
-		instructions[instructionsIndex]->text = malloc(CPT__SINGLE_INSTRUCTION_LENGTH * sizeof(char));
-		ulng  textOffset = CPT__SINGLE_INSTRUCTION_LENGTH * i;
-		char* text       = instructions[instructionsIndex]->text;
-		int   t          = 0;
-		for(; t < CPT__SINGLE_INSTRUCTION_LENGTH - 1; t++) { text[t] = content[textOffset+t]; } //no need to get terminating LINE FEED
-		text[t] = '\0'; //better replace it by the string termination character
-
-		//get instruction mode
-		char mode = content[textOffset];
-		if(mode != 'k' && mode != 'u') {
-			fprintf(stderr, "VisualLinux: Invalid mode '%c' in instruction ('k' or 'u' expected).\n", mode);
-			exit(EXIT_FAILURE);
-		}
-		instructions[instructionsIndex]->mode = mode;
-
-		//get instruction name
-		char name = content[textOffset+1];
-		if(name != 'P' && name != 'A' && name != 'R' && name != 'W') {
-			fprintf(stderr, "VisualLinux: Invalid name '%c' in instruction ('P', 'A', 'R' or 'W' expected).\n", name);
-			exit(EXIT_FAILURE);
-		}
-		instructions[instructionsIndex]->name = name;
-
-		//get parameter type
-		char pType = content[textOffset+2];
-		if(pType != 'R' && pType != 'V') {
-			fprintf(stderr, "VisualLinux: Invalid parameter type '%c' in instruction ('R' or 'V' expected).\n", pType);
-			exit(EXIT_FAILURE);
-		}
-		instructions[instructionsIndex]->pType = pType;
-
-		//get parameter value
-		instructions[instructionsIndex]->pValue = 0;
-		for(int j=0; j < 4; j++) {
-			short current = content[textOffset+3+j]; //IMPORTANT: must be at least a short !!!
-
-			//decimal character
-			if(current >= '0' && current <= '9') { instructions[instructionsIndex]->pValue += (current - '0') << (3-j); }
-
-			//alpha character
-			else if(current >= 'a' && current <= 'f') { instructions[instructionsIndex]->pValue += (current - 'a') << (3-j); }
-
-			//error cases
-			else {
-				fprintf(
-					stderr,
-					"VisualLinux: Invalid parameter value '%c%c%c%c' in instruction (only hex characters expected).\n",
-					content[textOffset+3], content[textOffset+4],
-					content[textOffset+5], content[textOffset+6]
-				);
-				exit(EXIT_FAILURE);
-			}
-		}
-
-		//follow i evolution
-		instructionsIndex++;
-	}
+	//store in RAM as we had a byte array (starting from the correct position of course)
+	char* bRam = (char*)(ram + startIndex);
+	for(ushr i=0; i < length; i++) { bRam[i] = data[i]; }
+}
+void stackPush(ushr* stack, ushr value) {
+	for(ushr i=CPT__CPUMEM_STACK_LENGTH-2; i >= 0; i--) { stack[i+1] = stack[i]; } //shift all-1 values
+	stack[0] = value; //set new one
+}
+ushr stackPop(ushr* stack) {
+	ushr toPop = stack[0];
+	for(ushr i=0; i < CPT__CPUMEMS_LENGTH-1; i++) { stack[i] = stack[i+1]; } //shift all-1 values
+	stack[CPT__CPUMEMS_LENGTH-1] = 0; //reset last value
+	return toPop;
 }
 
 //operate CPU
 void operateCPU(cpt* computer) {
-	instruction* currentInstruction = computer->instructions[computer->currentInstructionIndex];
-	switch(currentInstruction->name){
+	cpuMem* currentCpuMem      = computer->cpuMems[computer->currentCpuMemIndex];
+	ushr*   currentRegisters   = currentCpuMem->registers;
+	ushr*   currentStack       = currentCpuMem->stack;
+	ushr*   ram                = computer->ram;
 
-		//print
-		case 'P':
-			puts("Performing HW operation PRINT with parameter.");
-		break;
+	//decompose current HC instruction
+	ushr header = ram[computer->currentInstructionIndex];
+	ushr mode   = header & CPT__INSTRUCTION_MODE_MASK;
+	ushr pType  = header & CPT__INSTRUCTION_PTYP_MASK;
+	ushr id     = header & CPT__INSTRUCTION_ID_MASK;
+	ushr rawValue = ram[computer->currentInstructionIndex+1];
+	ushr registerValue = getRegisterValue(currentRegisters, rawValue);
 
-		//Move buffer read
-		case 'R':
-			if(currentInstruction->pType == 'V') {
-				fprintf(stderr, "VisualLinux: Invalid HC instruction \"%s\" (R with VALUE parameter).", currentInstruction->text);
-				exit(EXIT_FAILURE);
-			}
-			puts("Performing HW operation MOVE BUFFER READ.");
-		break;
-
-		//Move buffer write
-		case 'W':
-			puts("Performing HW operation MOVE BUFFER WRITE.");
-		break;
+	//redirections
+	char* filename;
+	ushr one;
+	ushr r0 = currentRegisters[0];
+	switch(id){
 
 		//add
-		case 'A':
-			puts("Performing HW operation ADD.");
+		case CPT__INSTRUCTION_ID_ADD:
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            one = registerValue; }
+			else                                        { checkRAMAddress(rawValue); one = ram[rawValue]; }
+			currentRegisters[0] = r0 + one;
+		break;
+
+		//multiply
+		case CPT__INSTRUCTION_ID_MUL:
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            one = registerValue; }
+			else                                        { checkRAMAddress(rawValue); one = ram[rawValue]; }
+			currentRegisters[0] = r0 * one;
+		break;
+
+		//print
+		case CPT__INSTRUCTION_ID_PRT:
+			one = rawValue;
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
+			writeOnScreen(computer->screen, readStringFromRAM(ram, one));
+		break;
+
+		//jump
+		case CPT__INSTRUCTION_ID_JMP:
+			one = rawValue;
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
+			computer->currentInstructionIndex += one-1; //shit 1 to take into account the auto-increment
+		break;
+
+		//input to stack
+		case CPT__INSTRUCTION_ID_INP:
+			one = rawValue;
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
+			stackPush(currentStack, one);
+		break;
+
+		//output from stack
+		case CPT__INSTRUCTION_ID_OUP:
+			one = stackPop(currentStack);
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[rawValue] = one; }
+			else                                        { checkRAMAddress(rawValue);              ram[rawValue] = one; }
+		break;
+
+		//write from Memory
+		case CPT__INSTRUCTION_ID_MEM:
+			one = ram[r0];
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[rawValue] = one; }
+			else                                        { checkRAMAddress(rawValue);              ram[rawValue] = one; }
+		break;
+
+		//write into Register
+		case CPT__INSTRUCTION_ID_REG:
+			one = getRegisterValue(currentRegisters, r0);
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[rawValue] = one; }
+			else                                        { checkRAMAddress(rawValue);              ram[rawValue] = one; }
+		break;
+
+		//load
+		case CPT__INSTRUCTION_ID_LOA:
+			one = rawValue;
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
+			filename = readStringFromRAM(ram, r0);
+			loadFromStorage(ram, one, filename);
+			free(filename);
+		break;
+
+		//zero
+		case CPT__INSTRUCTION_ID_ZER:
+			one = rawValue;
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
+			for(ushr i=0; i < one; i++) { ram[r0+i] = 0; }
+		break;
+
+		//change CPU mem
+		case CPT__INSTRUCTION_ID_CHA:
+			one = rawValue;
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
+			if(one > CPT__CPUMEMS_LENGTH) {
+				fprintf(stderr, "Computer: Invalid CPUMEM index given %i (maximum allowed is %i).", one, CPT__CPUMEMS_LENGTH-1);
+				exit(EXIT_FAILURE);
+			}
+			computer->currentCpuMemIndex = one;
 		break;
 
 		//undefined instruction
 		default:
-			fprintf(
-				stderr,
-				"VisualLinux: Invalid HC instruction '%c' detected at line %llu : \"%s\".\n",
-				currentInstruction->name,
-				computer->currentInstructionIndex,
-				currentInstruction->text
-			);
+			fprintf(stderr, "Computer: Invalid HC instruction ID %i detected at ram index %i.\n", id, computer->currentInstructionIndex);
 			exit(EXIT_FAILURE);
 		break;
 	}
+
+	//increase instruction index
+	computer->currentInstructionIndex += 2; //2 words per instruction (4 bytes steps)
 }
 
 //kernel
@@ -229,10 +283,6 @@ void loadKernel(cpt* computer) {
 	sprintf(kernelFilename, "%s/kernel.hc", computer->storageDir);
 
 	//load content of kernel program
-	loadHCContent(
-		readFile(kernelFilename),
-		computer->instructions,
-		0ULL                    //load instructions from the beginning
-	);
+	loadFromStorage(computer->ram, 0, kernelFilename);
 	free(kernelFilename);
 }

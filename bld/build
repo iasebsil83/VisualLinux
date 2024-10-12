@@ -25,12 +25,24 @@ mkdir  $OUT $TMP $APP
 
 #dependencies
 cd $TMP
+gcc -Wall -O2 -c $pCXD/src/utils.c
 gcc -Wall -O2 -c $pCXD/src/graphics/S2DE.c -I/usr/include/GL
 gcc -Wall -O2 -c $pCXD/src/computer.c
 gcc -Wall -O2 -c $pCXD/src/graphics/displayTools.c
 gcc -Wall -O2 -c $pCXD/src/VisualLinux.c
-gcc -Wall -O2 -c $pCXD/src/UC2kHC.c
+gcc -Wall -O2 -c $pCXD/src/UC2HC.c
 
 #executables
-gcc -Wall -o $APP/VisualLinux $TMP/VisualLinux.o $TMP/displayTools.o $TMP/computer.o $TMP/S2DE.o -lm -lglut -lGL -lX11
-gcc -Wall -o $APP/UC2kHC      $TMP/UC2kHC.o      $TMP/computer.o
+gcc \
+	-Wall \
+	-o $APP/VisualLinux \
+	$TMP/VisualLinux.o  \
+	$TMP/displayTools.o \
+	$TMP/computer.o     \
+	$TMP/S2DE.o         \
+	$TMP/utils.o -lm -lglut -lGL -lX11
+gcc \
+	-Wall \
+	-o $APP/UC2HC \
+	$TMP/UC2HC.o \
+	$TMP/utils.o

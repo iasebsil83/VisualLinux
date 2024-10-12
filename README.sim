@@ -99,40 +99,60 @@ This is the format that \bMUST\b be used in user programs to be correctly loaded
 
 t2 HC in details
 
-p Explaining HC is very very simple ; using it for complex stuff is not that cool. \
-Anyway, each HC instruction is composed of 7 bytes (ascii letters and numbers only). \
-If a line has more than those bytes, \iVisualLinux\i stops raising an error.
+p HC is consists in a list of instructions, each composed of 4 bytes (32 bits). \
+Each instruction is composed of some indentification information and a value parameter. \
+Here is what is inside an HC instruction exactly :
 
-p The file format used is basic Linux text files so each line ends with a single LINE FEED character (\m0x0a\m). \
-This character serves as delimiter for separating HC instructions. \
-\b\cff0000Even the last line must terminate with a LINE FEED.\c\b \
-Empty lines are not allowed.
+p The first bit is the \umode\u of that instruction, 0:user, 1:kernel. \
+Then another individual bit gives the information whether the following parameter will concern \
+a literal value (0) or rather target a register (1). \
+The next 14 bits are used to give the instruction ID (explained a few paragraphs below). \
+Finally, as you might have guessed, the remaining 16 bits forms the parameter value to be used with that instruction.
 
-p In an HC instruction, the first 2 bytes concerns the name of the instruction, and the 5 following bytes gives a parameter to that instruction. \
-The first byte in the instruction name can be either \mk\m or \mu\m designating if the instruction is to be executed respectively in "kernel" or "user" mode. \
-The next byte gives the name of the instruction. \
-Here is the list of all instruction names with their signification :
-- P
-Print onto virtual screen the 0-terminated string at the address given as parameter.
+p There is no separator between HC instructions, an HC file must only contain a multiple of 4 bytes, \
+each block considered as an HC instruction. \
+Here is the list of all HC instruction IDs with their explanation :
+- ID:0, \uAddition\u
+Perform an \bAddition\b between registers R0000 and given parameter and write result into R0000. \
+If parameter is a value (not register), use it as an address to get value from RAM.
 -
-- R
-Read value in the "Move buffer" and set it into the given parameter (parameter can't be a value).
+- ID:1, \uMultiplication\u
+Perform a \bMultiplication\b between registers R0000 and given parameter and write result into R0000. \
+If parameter is a value (not register), use it as an address to get value from RAM.
 -
-- W
-Write value of the given parameter into the "Move buffer".
+- ID:2, \uPrint\u
+\bPrint\b onto virtual screen the 0-terminated string in RAM at the address given as parameter. \
+If parameter is a register, use the value stored in that register as RAM address.
 -
-- A
-Perform an addition between registers R0001 and R0002 and write result into R0001.
+- ID:3, \uJump\u
+\bJump\b to the instruction index given. \
 -
-p The instruction parameter is composed of a type byte header (the 3rd byte) followed by 4 hexadecimal numbers giving its value. \
-Depending on the type header byte, the given parameter will be :
-- "V"
-A literal value (hexadecimal number)
+- ID:4, \uInput\u to current stack
+\bInput\b the given value to current stack.
 -
-- "R"
-A register (from R0001 to R0008)
+- ID:5, \uOutput\u to current stack
+\bOutput\b the last value from current stack into the given destination. \
+If parameter is a value (not register), use it as address to store result into memory.
 -
-l Usually, instructions not requiring a parameter are set to \mV0000\m.
+- ID:6, Write from \uMemory\u (RAM)
+Write value stored in \bMemory\b (RAM) at the address stored in R0000 into the given destination. \
+If parameter is a value (not register), use it as another address to store result into memory.
+-
+- ID:7, Write from current \uRegisters\u
+Write value from \bRegister\b at address stored in R0000 into the given destination. \
+If parameter is a value (not register), use it as an address to store result into memory. \
+Using this instruction with parameter R0000 is possible (but useless).
+-
+- ID:8, \uLoad\u from storage
+\bL\boad an external HC program into RAM at the address (offset) given as parameter. \
+The filename of the program to load will be taken from RAM at the address set in R000 and must be 0-terminated.
+-
+- ID:9, \uZero\u
+Fill the given number of words in RAM with \bZ\beros starting from the address stored in R0000.
+-
+- ID:10, \bC\bhange CPU Memory
+\bC\bhange CPU memory to the given index.
+-
 
 
 t2 UC in details
@@ -158,8 +178,8 @@ p Here is an example of how to produce its own kernel code :
 mkdir storage/myCustomOS
 nano  storage/myCustomOS/kernel.uc
 
-#compile it into HC with "kernel" mode instructions
-app/UC2kHC storage/myCustomOS/kernel.uc > storage/myCustomOS/kernel.hc
+#compile it into HC with kernel mode: 'k'
+app/UC2HC k storage/myCustomOS/kernel.uc > storage/myCustomOS/kernel.hc
 
 #use the generated "kernel.hc" file
 app/VisualLinux storage/myCustomOS

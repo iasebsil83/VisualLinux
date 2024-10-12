@@ -57,47 +57,6 @@ void drawShort(int x, int y, unsigned short s) {
 	S2DE_text(hexText, DT__NUMBER_SIZE, x,y);
 }
 
-//program lines
-void displayInstructions(int x, int y, cpt* computer) {
-
-	//draw title
-	S2DE_setColor(0, 0, 255);
-	S2DE_text("Instructions", DT__TEXT_SIZE, x, y + DT__INSTRUCTION_BOX_HALFHEIGHT + DT__TITLE_HEIGHT_OFFSET);
-
-	//draw instructions
-	int originalY = y;
-	for(ulng i=0ULL; i < CPT__INSTRUCTIONS_LENGTH; i++) {
-		instruction* current = computer->instructions[i];
-
-		//shift on a new column if necessary
-		if(i != 0 && i%DT__MAX_INSTRUCTIONS_PER_COLUMN == 0) {
-			x += DT__DATA_BOX_WIDTH + DT__INSTRUCTION_BOX_WIDTH;
-			y  = originalY;
-		}
-
-		//draw index box
-		drawShort(x,y, i);
-
-		//draw instruction box
-		int shiftedX = x + DT__DATA_BOX_ASSUMED_TEXTWIDTH + DT__DATA_BOX_HALFWIDTH + DT__INSTRUCTION_BOX_HALFWIDTH;
-		S2DE_setColor(255, 0, 255);
-		S2DE_rectangle(
-			shiftedX - DT__INSTRUCTION_BOX_HALFWIDTH                                        , y-DT__INSTRUCTION_BOX_HALFHEIGHT,
-			shiftedX + DT__INSTRUCTION_BOX_HALFWIDTH + DT__INSTRUCTION_BOX_ASSUMED_TEXTWIDTH, y+DT__INSTRUCTION_BOX_HALFHEIGHT,
-			false
-		);
-		S2DE_setColor(0, 0, 0);
-		if(current == NULL) {
-			S2DE_text("#######", DT__TEXT_SIZE, shiftedX,y);
-		} else {
-			S2DE_text(current->text, DT__TEXT_SIZE, shiftedX,y);
-		}
-
-		//shift down for the next one
-		y -= DT__INSTRUCTION_BOX_HEIGHT;
-	}
-}
-
 //CPU
 void displayCPUMems(int x, int y, cpt* computer) {
 	int originalY         = y;
@@ -176,7 +135,7 @@ void displayRAM(int x, int y, cpt* computer) {
 }
 
 //virtual screen
-void displayScreen(int x, int y, char* text) {
+void displayScreen(int x, int y, cpt* computer) {
 
 	//draw black screen
 	S2DE_setColor(0, 0, 0);
@@ -193,4 +152,13 @@ void displayScreen(int x, int y, char* text) {
 		x+DT__SCREEN_HALFWIDTH, y+DT__SCREEN_HALFHEIGHT,
 		false
 	);
+
+	//draw lines
+	S2DE_setColor(255, 255, 255);
+	for(ulng s=0ULL; s < CPT__SCREEN_LENGTH; s++) {
+		S2DE_text(
+			computer->screen[s],    DT__TEXT_SIZE,
+			x-DT__SCREEN_HALFWIDTH, y-DT__SCREEN_HALFHEIGHT - DT__SCREEN_TEXTSHIFT
+		);
+	}
 }

@@ -39,6 +39,7 @@
 //screen
 #define DT__SCREEN_HALFWIDTH  200
 #define DT__SCREEN_HALFHEIGHT 110
+#define DT__SCREEN_TEXTSHIFT   10
 
 //global positionning
 #define DT__INSTRUCTIONS_X   10
@@ -60,15 +61,12 @@
 //generic
 void drawShort(int x, int y, unsigned short s);
 
-//program lines
-void displayInstructions(int x, int y, cpt* computer);
-
 //CPU
 void displayCPUMems(int x, int y, cpt* computer);
 void displayRAM(int x, int y, cpt* computer);
 
 //virtual screen
-void displayScreen(int x, int y, char* text);
+void displayScreen(int x, int y, cpt* computer);
 
 
 

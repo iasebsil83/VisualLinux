@@ -58,15 +58,12 @@ void S2DE_event(int event){
 	switch(event){
 		case S2DE_DISPLAY:
 
-			//current program lines
-			displayInstructions(DT__INSTRUCTIONS_X, DT__INSTRUCTIONS_Y, computer);
-
 			//memory
 			displayCPUMems(DT__CPUMEMS_X, DT__CPUMEMS_Y, computer);
 			displayRAM(DT__RAM_X, DT__RAM_Y, computer);
 
 			//virtual screen
-			displayScreen(DT__SCREEN_X, DT__SCREEN_Y, NULL);
+			displayScreen(DT__SCREEN_X, DT__SCREEN_Y, computer);
 		break;
 
 		case S2DE_KEYBOARD:
@@ -109,7 +106,7 @@ int main(int argc, char **argv) {
 	//create computer instance AND set also its static pointer to allow global access
 	cpt* computer = computerAccess( newComputer(argv[1]) );
 
-	//load kernel HC program
+	//load kernel program
 	loadKernel(computer);
 
 	//launch window
