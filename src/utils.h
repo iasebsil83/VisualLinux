@@ -19,9 +19,9 @@ typedef unsigned long long ulng;
 
 // ---------------- FUNCTIONS ----------------
 
-//tools
+//IO
 char* readFile(char* filename);
-void writeFile(char* filename, char* content);
+void  writeFile(char* filename, char* content, ulng contentLength);
 
 
 

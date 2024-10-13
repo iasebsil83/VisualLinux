@@ -29,6 +29,7 @@
 #define CPT__INSTRUCTION_ID_LOA        0x0008
 #define CPT__INSTRUCTION_ID_ZER        0x0009
 #define CPT__INSTRUCTION_ID_CHA        0x000a
+#define CPT__INSTRUCTION_ID_GPC        0x000b
 
 //computer constants
 #define CPT__CPUMEMS_LENGTH            8    //number of CPU mems available

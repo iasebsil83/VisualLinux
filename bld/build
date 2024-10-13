@@ -34,15 +34,17 @@ gcc -Wall -O2 -c $pCXD/src/UC2HC.c
 
 #executables
 gcc \
-	-Wall \
+	-Wall               \
 	-o $APP/VisualLinux \
 	$TMP/VisualLinux.o  \
 	$TMP/displayTools.o \
 	$TMP/computer.o     \
 	$TMP/S2DE.o         \
-	$TMP/utils.o -lm -lglut -lGL -lX11
+	$TMP/utils.o        \
+	-lm -lglut -lGL -lX11
 gcc \
-	-Wall \
-	-o $APP/UC2HC \
-	$TMP/UC2HC.o \
+	-Wall           \
+	-o $APP/UC2HC   \
+	$TMP/UC2HC.o    \
+	$TMP/computer.o \
 	$TMP/utils.o

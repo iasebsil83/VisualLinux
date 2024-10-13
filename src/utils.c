@@ -3,7 +3,6 @@
 //standard
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
 
 //own header
 #include "utils.h"
@@ -15,7 +14,7 @@
 
 // ---------------- TOOLS ----------------
 
-//default tools...
+//IO
 char* readFile(char* filename) {
 
 	//read file and get its content size
@@ -27,10 +26,7 @@ char* readFile(char* filename) {
 	fseek(f, 0UL, SEEK_SET);
 	char* content = malloc((fileSize+1) * sizeof(char));
 	ulng readBytes = fread(content, 1, fileSize, f);
-
-	//close
 	fclose(f);
-	free(f);
 
 	//error cases
 	if(readBytes != fileSize) {
@@ -43,16 +39,12 @@ char* readFile(char* filename) {
 	return content;
 }
 
-void writeFile(char* filename, char* content) {
-	ulng contentLength = strlen(content);
+void writeFile(char* filename, char* content, ulng contentLength) {
 
 	//read file and get its content size
 	FILE* f = fopen(filename, "w");
 	ulng writtenBytes = fwrite(content, 1, contentLength, f);
-
-	//close
 	fclose(f);
-	free(f);
 
 	//error cases
 	if(writtenBytes != contentLength) {

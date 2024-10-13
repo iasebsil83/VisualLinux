@@ -125,7 +125,8 @@ If parameter is a value (not register), use it as an address to get value from R
 If parameter is a register, use the value stored in that register as RAM address.
 -
 - ID:3, \uJump\u
-\bJump\b to the instruction index given. \
+\bJump\b to the number of instructions given instead of just one. \
+Signed values can be used to jump backwards a certain number.
 -
 - ID:4, \uInput\u to current stack
 \bInput\b the given value to current stack.
@@ -150,8 +151,12 @@ The filename of the program to load will be taken from RAM at the address set in
 - ID:9, \uZero\u
 Fill the given number of words in RAM with \bZ\beros starting from the address stored in R0000.
 -
-- ID:10, \bC\bhange CPU Memory
+- ID:10, \uChange\u CPU Memory
 \bC\bhange CPU memory to the given index.
+-
+- ID:11, \uGet\u program counter
+\bG\bet program counter at current position and store it into given destination. \
+If parameter is a value (not register), use it as address to store result into memory.
 -
 
 

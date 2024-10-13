@@ -205,7 +205,7 @@ void operateCPU(cpt* computer) {
 		case CPT__INSTRUCTION_ID_JMP:
 			one = rawValue;
 			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
-			computer->currentInstructionIndex += one-1; //shit 1 to take into account the auto-increment
+			computer->currentInstructionIndex += one-1; //shift 1 to take into account the auto-increment
 		break;
 
 		//input to stack
@@ -261,6 +261,12 @@ void operateCPU(cpt* computer) {
 				exit(EXIT_FAILURE);
 			}
 			computer->currentCpuMemIndex = one;
+		break;
+
+		//get Program Counter
+		case CPT__INSTRUCTION_ID_GPC:
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[rawValue] = computer->currentInstructionIndex; }
+			else                                        { checkRAMAddress(rawValue);              ram[rawValue] = computer->currentInstructionIndex; }
 		break;
 
 		//undefined instruction
