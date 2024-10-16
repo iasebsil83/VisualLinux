@@ -22,7 +22,11 @@
 //S2DE variables
 extern unsigned int   S2DE_width;
 extern unsigned int   S2DE_height;
+extern          int   S2DE_keyState;
 extern unsigned short S2DE_key;
+extern int            S2DE_background_red;
+extern int            S2DE_background_green;
+extern int            S2DE_background_blue;
 
 //VisualLinux constants
 #define WINDOW_DEFAULT_WIDTH  720
@@ -64,15 +68,18 @@ void S2DE_event(int event){
 
 			//virtual screen
 			displayScreen(DT__SCREEN_X, DT__SCREEN_Y, computer);
+
+			//current instruction
+			displayCurrentInstruction(DT__CURRENT_INSTRUCTION_X, DT__CURRENT_INSTRUCTION_Y, computer);
 		break;
 
 		case S2DE_KEYBOARD:
-			switch(S2DE_key){
+			if(S2DE_keyState == S2DE_KEY_PRESSED) {
+				switch(S2DE_key){
 
-				//move forward just one step
-				case S2DE_KEY_LEFT:
-					operateCPU(computer);
-				break;
+					//move forward just one step
+					case S2DE_KEY_RIGHT: operateCPU(computer); break;
+				}
 			}
 		break;
 
@@ -108,6 +115,33 @@ int main(int argc, char **argv) {
 
 	//load kernel program
 	loadKernel(computer);
+
+	//tmp
+	writeOnScreen(computer->screen, "Hello");
+	writeOnScreen(computer->screen, "My name is Seb");
+	writeOnScreen(computer->screen, "Nice to meeet you");
+	writeOnScreen(computer->screen, "I am a screen");
+	writeOnScreen(computer->screen, "You can use me as I use quite long words");
+	writeOnScreen(computer->screen, "One two, one two...");
+	writeOnScreen(computer->screen, "This is a test");
+	writeOnScreen(computer->screen, "What a wonderful night it is");
+	writeOnScreen(computer->screen, "visualizing Linux kernel exe");
+	writeOnScreen(computer->screen, "in a more more visual way !");
+	writeOnScreen(computer->screen, "Hello");
+	writeOnScreen(computer->screen, "My name is Seb");
+	writeOnScreen(computer->screen, "Nice to meeet you");
+	writeOnScreen(computer->screen, "I am a screen");
+	writeOnScreen(computer->screen, "You can use me as I use quite long words");
+	writeOnScreen(computer->screen, "One two, one two...");
+	writeOnScreen(computer->screen, "This is a test");
+	writeOnScreen(computer->screen, "What a wonderful night it is");
+	writeOnScreen(computer->screen, "visualizing Linux kernel exe");
+	writeOnScreen(computer->screen, "in a more more visual way !");
+
+	//set custom background color
+	S2DE_background_red   = DT__COLOR_BACKGROUND_R;
+	S2DE_background_green = DT__COLOR_BACKGROUND_G;
+	S2DE_background_blue  = DT__COLOR_BACKGROUND_B;
 
 	//launch window
 	S2DE_init(argc,argv, "Visual Linux", WINDOW_DEFAULT_WIDTH, WINDOW_DEFAULT_HEIGHT);

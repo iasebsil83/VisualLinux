@@ -14,7 +14,7 @@
 #define DT__TITLE_HEIGHT_OFFSET 10
 
 //data boxes
-#define DT__DATA_BOX_HALFWIDTH         5
+#define DT__DATA_BOX_HALFWIDTH          5
 #define DT__DATA_BOX_ASSUMED_TEXTWIDTH 35
 #define DT__DATA_BOX_HALFHEIGHT        11
 #define DT__DATA_BOX_WIDTH             (2*DT__DATA_BOX_HALFWIDTH + DT__DATA_BOX_ASSUMED_TEXTWIDTH)
@@ -34,22 +34,86 @@
 #define DT__CPUMEM_REGISTER_STACK_OFFSET_HEIGHT 20
 
 //ram
-#define DT__MAX_RAM_WORD_PER_COLUMN 15
+#define DT__MAX_RAM_WORD_PER_COLUMN 47
+#define DT__RAM_PC_SHIFT_X           5 //program counter
+#define DT__RAM_PC_SHIFT_Y           5
 
 //screen
 #define DT__SCREEN_HALFWIDTH  200
-#define DT__SCREEN_HALFHEIGHT 110
-#define DT__SCREEN_TEXTSHIFT   10
+#define DT__SCREEN_HALFHEIGHT 240
+#define DT__SCREEN_SHIFT_X     10
+#define DT__SCREEN_SHIFT_Y     16
+#define DT__SCREEN_LINE_SHIFT  24
+
+//current instruction
+#define DT__CURRENT_INSTRUCTION_HALFWIDTH           20
+#define DT__CURRENT_INSTRUCTION_ASSUMED_TEXTWIDTH  200
+#define DT__CURRENT_INSTRUCTION_ASSUMED_TEXTHEIGHT  20
+#define DT__CURRENT_INSTRUCTION_HALFHEIGHT          15
+#define DT__CURRENT_INSTRUCTION_WIDTH              (2*DT__CURRENT_INSTRUCTION_HALFWIDTH  + DT__CURRENT_INSTRUCTION_ASSUMED_TEXTWIDTH)
+#define DT__CURRENT_INSTRUCTION_HEIGHT             (2*DT__CURRENT_INSTRUCTION_HALFHEIGHT + DT__CURRENT_INSTRUCTION_ASSUMED_TEXTHEIGHT)
+#define DT__CURRENT_INSTRUCTION_TEXT_SIZE          0.2
 
 //global positionning
-#define DT__INSTRUCTIONS_X   10
-#define DT__INSTRUCTIONS_Y 1040
-#define DT__CPUMEMS_X      1555
-#define DT__CPUMEMS_Y      1040
-#define DT__RAM_X            10
-#define DT__RAM_Y           320
-#define DT__SCREEN_X       1710
-#define DT__SCREEN_Y        450
+#define DT__INSTRUCTIONS_X          10
+#define DT__INSTRUCTIONS_Y        1040
+#define DT__CPUMEMS_X             1555
+#define DT__CPUMEMS_Y             1040
+#define DT__RAM_X                   10
+#define DT__RAM_Y                 1040
+#define DT__SCREEN_X              1710
+#define DT__SCREEN_Y               260
+#define DT__CURRENT_INSTRUCTION_X 1620
+#define DT__CURRENT_INSTRUCTION_Y  525
+
+
+
+
+
+
+// ---------------- COLORS ----------------
+
+//global window
+#define DT__COLOR_BACKGROUND_R 0
+#define DT__COLOR_BACKGROUND_G 0
+#define DT__COLOR_BACKGROUND_B 0
+
+//box
+#define DT__COLOR_BOX_TEXT_R 128
+#define DT__COLOR_BOX_TEXT_G 128
+#define DT__COLOR_BOX_TEXT_B 128
+
+//titles
+#define DT__COLOR_TITLE_TEXT_R   0
+#define DT__COLOR_TITLE_TEXT_G 255
+#define DT__COLOR_TITLE_TEXT_B   0
+
+//ram program counter
+#define DT__COLOR_RAM_PC_R   0
+#define DT__COLOR_RAM_PC_G 255
+#define DT__COLOR_RAM_PC_B   0
+
+//screen
+#define DT__COLOR_SCREEN_BACKGROUND_R   0
+#define DT__COLOR_SCREEN_BACKGROUND_G   0
+#define DT__COLOR_SCREEN_BACKGROUND_B   0
+#define DT__COLOR_SCREEN_STROKE_R 255
+#define DT__COLOR_SCREEN_STROKE_G 255
+#define DT__COLOR_SCREEN_STROKE_B   0
+#define DT__COLOR_SCREEN_TEXT_R 255
+#define DT__COLOR_SCREEN_TEXT_G 255
+#define DT__COLOR_SCREEN_TEXT_B 255
+
+//current instruction
+#define DT__COLOR_CURRENT_INSTRUCTION_BACKGROUND_R  0
+#define DT__COLOR_CURRENT_INSTRUCTION_BACKGROUND_G  0
+#define DT__COLOR_CURRENT_INSTRUCTION_BACKGROUND_B 80
+#define DT__COLOR_CURRENT_INSTRUCTION_STROKE_R   0
+#define DT__COLOR_CURRENT_INSTRUCTION_STROKE_G 255
+#define DT__COLOR_CURRENT_INSTRUCTION_STROKE_B   0
+#define DT__COLOR_CURRENT_INSTRUCTION_TEXT_R   0
+#define DT__COLOR_CURRENT_INSTRUCTION_TEXT_G 255
+#define DT__COLOR_CURRENT_INSTRUCTION_TEXT_B   0
 
 
 
@@ -67,6 +131,9 @@ void displayRAM(int x, int y, cpt* computer);
 
 //virtual screen
 void displayScreen(int x, int y, cpt* computer);
+
+//current instruction
+void displayCurrentInstruction(int x, int y, cpt* computer);
 
 
 

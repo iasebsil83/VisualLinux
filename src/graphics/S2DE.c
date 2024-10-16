@@ -140,6 +140,14 @@ static int S2DE_timedExecution_delay = -1;
 
 
 
+//background color
+int S2DE_background_red   =   0;
+int S2DE_background_green =   0;
+int S2DE_background_blue  =   0;
+int S2DE_background_alpha = 255;
+
+
+
 //event variables
 int S2DE_mouseState         = 0; //mouse
 int S2DE_mouseButton        = 0;
@@ -192,7 +200,7 @@ static void S2DEL_timedExecution(int i){
 //display
 static void S2DEL_display(){
 	glFlush();
-	glClearColor(1.f, 1.f, 1.f, 1.f);
+	glClearColor(S2DE_background_red/255.f, S2DE_background_green/255.f, S2DE_background_blue/255.f, S2DE_background_alpha/255.f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	S2DE_event(S2DE_DISPLAY);
 	glutSwapBuffers();

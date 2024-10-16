@@ -35,8 +35,8 @@
 #define CPT__CPUMEMS_LENGTH            8    //number of CPU mems available
 #define CPT__CPUMEM_REGISTERS_LENGTH   8    //number of registers per CPU mem
 #define CPT__CPUMEM_STACK_LENGTH       13   //number of stack slots per CPU mem
-#define CPT__RAM_LENGTH                1024 //number of word available in RAM
-#define CPT__SCREEN_LENGTH             3    //number of lines in screen
+#define CPT__RAM_LENGTH                1544 //number of word available in RAM
+#define CPT__SCREEN_LENGTH             20   //number of lines in screen
 
 //cpu
 typedef struct {
