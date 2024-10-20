@@ -51,7 +51,7 @@ void drawShort(int x, int y, unsigned short s) {
 	S2DE_setColor(DT__COLOR_BOX_TEXT_R, DT__COLOR_BOX_TEXT_G, DT__COLOR_BOX_TEXT_B);
 	S2DE_rectangle(
 		x - DT__DATA_BOX_HALFWIDTH                                 , y-DT__DATA_BOX_HALFHEIGHT,
-		x + DT__DATA_BOX_HALFWIDTH + DT__DATA_BOX_ASSUMED_TEXTWIDTH, y+DT__DATA_BOX_HALFHEIGHT,
+		x + DT__DATA_BOX_HALFWIDTH + DT__DATA_BOX_ASSUMED_TEXTWIDTH, y+DT__DATA_BOX_HALFHEIGHT + DT__DATA_BOX_ASSUMED_TEXTHEIGHT,
 		false
 	);
 	S2DE_text(hexText, DT__NUMBER_SIZE, x,y);
@@ -106,6 +106,16 @@ void displayCPUMems(int x, int y, cpt* computer) {
 			y -= DT__DATA_BOX_HEIGHT;
 		}
 
+		//current selection box
+		if(c == computer->currentCpuMemIndex) {
+			S2DE_setColor(DT__COLOR_CPUMEM_SELECTION_R, DT__COLOR_CPUMEM_SELECTION_G, DT__COLOR_CPUMEM_SELECTION_B);
+			S2DE_rectangle(
+				x - DT__DATA_BOX_HALFWIDTH                                  - DT__RAM_PC_SHIFT_X,         y+DT__DATA_BOX_HALFHEIGHT + DT__DATA_BOX_ASSUMED_TEXTHEIGHT - DT__CPUMEM_SELECTION_SHIFT_Y,
+				x + DT__DATA_BOX_HALFWIDTH + DT__DATA_BOX_ASSUMED_TEXTWIDTH + DT__RAM_PC_SHIFT_X, originalY+DT__DATA_BOX_HALFHEIGHT + DT__DATA_BOX_ASSUMED_TEXTHEIGHT + DT__CPUMEM_SELECTION_SHIFT_Y,
+				false
+			);
+		}
+
 		//right shift to get to next cpuMem
 		x += DT__DATA_BOX_WIDTH;
 	}
@@ -129,12 +139,22 @@ void displayRAM(int x, int y, cpt* computer) {
 		//draw data box
 		drawShort(x,y, computer->ram[r]);
 
+		//supervised program counter
+		if(r == computer->currentSupervisedInstructionIndex) {
+			S2DE_setColor(DT__COLOR_RAM_SPC_R, DT__COLOR_RAM_SPC_G, DT__COLOR_RAM_SPC_B);
+			S2DE_rectangle(
+				x - DT__DATA_BOX_HALFWIDTH                                  - DT__RAM_SPC_SHIFT_X, y-DT__DATA_BOX_HALFHEIGHT - DT__RAM_SPC_SHIFT_Y,
+				x + DT__DATA_BOX_HALFWIDTH + DT__DATA_BOX_ASSUMED_TEXTWIDTH + DT__RAM_SPC_SHIFT_X, y+DT__DATA_BOX_HALFHEIGHT + DT__DATA_BOX_ASSUMED_TEXTHEIGHT + DT__RAM_SPC_SHIFT_Y,
+				false
+			);
+		}
+
 		//program counter
 		if(r == computer->currentInstructionIndex) {
 			S2DE_setColor(DT__COLOR_RAM_PC_R, DT__COLOR_RAM_PC_G, DT__COLOR_RAM_PC_B);
 			S2DE_rectangle(
 				x - DT__DATA_BOX_HALFWIDTH                                  - DT__RAM_PC_SHIFT_X, y-DT__DATA_BOX_HALFHEIGHT - DT__RAM_PC_SHIFT_Y,
-				x + DT__DATA_BOX_HALFWIDTH + DT__DATA_BOX_ASSUMED_TEXTWIDTH + DT__RAM_PC_SHIFT_X, y+DT__DATA_BOX_HALFHEIGHT + DT__RAM_PC_SHIFT_Y,
+				x + DT__DATA_BOX_HALFWIDTH + DT__DATA_BOX_ASSUMED_TEXTWIDTH + DT__RAM_PC_SHIFT_X, y+DT__DATA_BOX_HALFHEIGHT + DT__DATA_BOX_ASSUMED_TEXTHEIGHT + DT__RAM_PC_SHIFT_Y,
 				false
 			);
 		}
@@ -173,15 +193,15 @@ void displayScreen(int x, int y, cpt* computer) {
 	}
 }
 
-void displayCurrentInstruction(int x, int y, cpt* computer) {
+void displayCurrentSupervisedInstruction(int x, int y, cpt* computer) {
 	char text[] = "#########";
 
 	//ignore special case (invalid instruction)
-	if(computer->currentInstructionIndex != CPT__RAM_LENGTH-1ULL) {
+	if(computer->currentSupervisedInstructionIndex != CPT__RAM_LENGTH-1ULL) {
 
 		//decompose current instruction
-		ushr header = computer->ram[computer->currentInstructionIndex  ];
-		ushr value  = computer->ram[computer->currentInstructionIndex+1];
+		ushr header = computer->ram[computer->currentSupervisedInstructionIndex  ];
+		ushr value  = computer->ram[computer->currentSupervisedInstructionIndex+1];
 		ushr mode   = header & CPT__INSTRUCTION_MODE_MASK;
 		ushr ptype  = header & CPT__INSTRUCTION_PTYP_MASK;
 		ushr id     = header & CPT__INSTRUCTION_ID_MASK;

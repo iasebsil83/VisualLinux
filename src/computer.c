@@ -21,8 +21,9 @@ cpt* newComputer(char* storageDir) {
 	cpt* c = malloc(sizeof(cpt));
 
 	//basic stuff
-	c->storageDir              = storageDir;
-	c->currentInstructionIndex = 0;
+	c->storageDir                        = storageDir;
+	c->currentInstructionIndex           = 0;
+	c->currentSupervisedInstructionIndex = 0;
 
 	//cpu mems
 	cpuMem** cpuMems = malloc(CPT__CPUMEMS_LENGTH * sizeof(cpuMem*));
@@ -140,13 +141,25 @@ void writeOnScreen(char** screen, char* line) {
 // ---------------- EXECUTION ----------------
 
 //operations
-void loadFromStorage(ushr* ram, ushr startIndex, char* filename) {
-	char* data   = readFile(filename);
-	ushr  length = strlen(data);
+void loadFromStorage(ushr* ram, ulng startIndex, char* filename) {
+	buffer* content = readFile(filename);
+	ulng    wLength = 2ULL * content->length;
+
+	//program too big to be loaded
+	if(startIndex + wLength >= CPT__RAM_LENGTH) {
+		fprintf(
+			stderr,
+			"Computer: Program too big to be loaded (%llu words to load starting from %llu, maximum RAM length is %i).",
+			wLength, startIndex, CPT__RAM_LENGTH
+		);
+		exit(EXIT_FAILURE);
+	}
 
 	//store in RAM as we had a byte array (starting from the correct position of course)
-	char* bRam = (char*)(ram + startIndex);
-	for(ushr i=0; i < length; i++) { bRam[i] = data[i]; }
+	char* bRam  = (char*)(ram + startIndex);
+	char* input = content->data;
+	for(ulng i=0; i < content->length; i++) { bRam[i] = input[i]; }
+	freeBuffer(content);
 }
 void stackPush(ushr* stack, ushr value) {
 	for(ushr i=CPT__CPUMEM_STACK_LENGTH-2; i >= 0; i--) { stack[i+1] = stack[i]; } //shift all-1 values
@@ -161,10 +174,10 @@ ushr stackPop(ushr* stack) {
 
 //operate CPU
 void operateCPU(cpt* computer) {
-	cpuMem* currentCpuMem      = computer->cpuMems[computer->currentCpuMemIndex];
-	ushr*   currentRegisters   = currentCpuMem->registers;
-	ushr*   currentStack       = currentCpuMem->stack;
-	ushr*   ram                = computer->ram;
+	cpuMem* currentCpuMem    = computer->cpuMems[computer->currentCpuMemIndex];
+	ushr*   currentRegisters = currentCpuMem->registers;
+	ushr*   currentStack     = currentCpuMem->stack;
+	ushr*   ram              = computer->ram;
 
 	//decompose current HC instruction
 	ushr header = ram[computer->currentInstructionIndex];
@@ -172,7 +185,8 @@ void operateCPU(cpt* computer) {
 	ushr pType  = header & CPT__INSTRUCTION_PTYP_MASK;
 	ushr id     = header & CPT__INSTRUCTION_ID_MASK;
 	ushr rawValue = ram[computer->currentInstructionIndex+1];
-	ushr registerValue = getRegisterValue(currentRegisters, rawValue);
+	ushr registerValue = 0;
+	if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { registerValue = getRegisterValue(currentRegisters, rawValue); }
 
 	//redirections
 	char* filename;
@@ -205,7 +219,7 @@ void operateCPU(cpt* computer) {
 		case CPT__INSTRUCTION_ID_JMP:
 			one = rawValue;
 			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
-			computer->currentInstructionIndex += one-1; //shift 1 to take into account the auto-increment
+			computer->currentInstructionIndex += one/2 - 2; //shift -2 to take into account the auto-increment
 		break;
 
 		//input to stack
@@ -278,6 +292,9 @@ void operateCPU(cpt* computer) {
 
 	//increase instruction index
 	computer->currentInstructionIndex += 2; //2 words per instruction (4 bytes steps)
+
+	//also set supervised instruction back to current execution
+	computer->currentSupervisedInstructionIndex = computer->currentInstructionIndex;
 }
 
 //kernel

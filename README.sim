@@ -3,11 +3,14 @@ t0 Visual Linux
 
 
 
+
+
 t1 Overview
 
 p \iVisual Linux\i is a graphical simulation application showing how the Linux kernel execution works. \
 This simulator includes memory usage in CPU cache, control flow between user and kernel code, exception handling and more.
 b
+
 
 
 t2 Disclaimer on exactness
@@ -23,6 +26,7 @@ Another thing that you might find weird in this implementation is that we only u
 This has also been made to simplify representations and reduce display information.
 
 l This project has been made for educational purpose only.
+
 
 
 t2 How does it work
@@ -47,6 +51,8 @@ You better run them first and then, if curious, dig into the code to make yours.
 
 
 
+
+
 t1 Use
 
 t2 Requirements
@@ -58,6 +64,7 @@ However, to compile this project you will require package \mfreeglut3-dev\m.
 " bash
 sudo apt install freeglut3-dev #on apt based distros
 "
+
 
 
 t2 Compile & Run
@@ -85,21 +92,174 @@ t2 HC and UC
 
 p As said before, the CPU instruction set is completely custom. \
 As the CPU is the only interface we use for hardware interactions, I invented the \bHC\b syntax (= "Hardware Code") for the occasion \
-which is nothing more than CPU instructions directly written in a file, one instruction per line. \
-This syntax is highly restrictive making things easy for our "virtual CPU" to operate.
+which is nothing more than CPU instructions directly written in a file, under a "binary" format. \
+This syntax is highly restrictive making things easy for our "virtual CPU" to operate but quite hard to write programs manually.
 
-p However, you may know that the format we use in executable files for Linux kernel on disk (basically ELF) \
-is not meant to directly operate with hardware but it is loaded into memory under a slightly different format to then, be correctly used by hardware. \
-The kernel does some stuff to turn something written \uby\u "users" \ufor\u the kernel into something \ufor\u the hardware itself.
+p For this reason, I also decided to make a \b\uUser Code\u\b syntax (= \bUC\b files), more textual and less restrictive. \
+This format cannot be used as is to be loaded into virtual computer RAM, we must compile it into HC format before use. \
+This can be done using the \mUC2HC\m compilator given alongside the main application :
+" bash
+app/UC2HC <mode> path/to/my/program.uc #will produce path/to/my/program.hc
+"
+p The \m<mode>\m argument you see here \umust be given\u to indicate whether your code must be compiled in \buser\b or \bkernel\b mode. \
+It only consist in a single character \mu\m or \mk\m.
 
-p For this reason, I also decided to make a user executable code syntax (in analogy with ELF, DWARF...) : the \bUC\b syntax (= "User Code"). \
-This is the format that \bMUST\b be used in user programs to be correctly loaded \uby\u the kernel into HC format. \
-(Note that at the end, everything will become HC since it is the only syntax that the CPU understands).
+l I will now give some explanations on how those syntaxes work.
+
+
+
+t2 UC in details
+
+p An UC file is read line by line, each line \upotentially\u corresponding to an HC instruction. \
+We determine which type of instruction we have by reading the first character of the line : the \uidentifier\u. \
+Then, the rest of the line will be analysed depending on the type of instruction we have. \
+Mind that a space separator is always required after the identifier for better visualisation of the code.
+
+p Also for better code understanding, it is possible to have empty lines and comments. \
+Empty lines are simply ignored and lines with a semicolon identifier \m;\m will be considered as a comment so also completely ignored as well. \
+Examples of some UC codes are given in the \mstorage/\m directory of the project, you can check them out to have a first overview of the thing.
+
+
+t3 UC : Data Items
+
+p As I said, each UC instruction has its own specificity. \
+Let's first start by the simplest one : \uDATA ITEMS\u. \
+Those instructions begin with the \mD\m identifier and it allows you to store static data fields in your program such as string constants or numbers.
+
+p A data item requires 2 parameters separated by a space character : the VALUE to store and its corresponding DATA SYMBOL NAME (name). \
+The first parameter can be of 2 type : a \b\uw\u\bord or a string. \
+This is determined by the first character of the first parameter, the rest of it will be interpreted as the value itself. \
+Then, the second parameter gives a data symbol name that can be used anywhere in the code to target that value :
+"
+; word data item with given name MY_DATA_ITEM corresponding to value 0x02d5 (hexadecimal)
+D w02d5 MY_DATA_ITEM
+
+; string data item TITLE_STRING with a string value given
+D "This is a text sequence that can have a variable amount of characters" TITLE_STRING
+
+; another string data item with escaped sequences
+D "You can call me \"I.A.\" using backslashes '\\' characters" demonstration_string
+"
+p You see here that \b\uw\u\bord data items \u\cff0000must\c\u be expressed under 4 hexadecimal digits. \
+Strings can be anything as long as it ends with an non-escaped string terminator \m"\m. \
+Data item names must be only made of characters (lowercase & uppercase) and underscores.
+
+p Note that a terminator character will be added to the string when stored into HC file or when loaded in memory at runtime. \
+Also, unlike regular "variables" that we can see in lots of programming languages, \
+data items here can be used / called / referenced (use the term you want) at any location in the code. \
+Those elements are \ustatic\u data that are accessible from the beginning of the code to the very end \
+(considering that your kernel does respect your user space).
+
+p For more information about how those data items can be used at runtime (addresses, read / write / execute permissions...), \
+please check out the next chapter about the HC syntax. \
+You should easilly guess what can or cannot be done with it.
+
+
+t3 UC : Labels & Jumps
+
+p One \ureally\u helpful UC & HC instruction is the \b\uJ\u\bump, identified by the \mJ\m character. \
+This allows you to jump to a specific location in the code. \
+The instruction takes only one parameter starting with a type prefix \mv\m, \mr\m, \ml\m and \md\m standing for "value", "register", "label" and "data item".
+
+p Jumping to a value is the simplest one : the four next characters in our parameter must be hexadecimal digits \
+that corresponds to the location to go to relatively to the current position. \
+For register jumping, the principle is the same except that the four digits now refers to the current CPU register with that ID \
+so we will jump according to the value stored to that register. \
+The jump is still made relatively to the current execution position.
+"
+; Some instructions
+# instruction1
+# instruction2
+# instruction3
+# instruction4
+
+; jumping back to instruction3 (fffe = -2)
+J vfffe
+
+; same example using registers, considering that register R3 currently has value fffd (= -3) stored
+J r0003
+"
+p This seems to be useful sometimes but in practice, it is easy to make mistakes espacially when using value jumping. \
+Counting instruction indexes is not that simple. \
+At runtime and you may have surprises because the number of instructions you counted was not good in the resulting HC code.
+
+p The thing is that jumps must be done over a number of \b\uHC\u\b instructions and not over a number of \b\uUC\u\b instructions. \
+Indeed, some UC instructions such as Data Items or Labels does \u\cff0000not\c\u produce HC instructions at all. \
+A fair and secure way to use jumps in UC is to use register parameter when having previously stored in it the current execution position \
+(in order to get back when we left) or use label jumping (that we will see now).
+
+p As we said, another way to jump to somewhere interesting in our program is using labels. \
+Labels are fictive locations not appearing in the resulting HC code that targets a specific location in the code. \
+These are UC instructions with the identifier \mL\m that only takes in parameter a label name :
+"
+l my_first_custom_label
+# ins1
+# ins2
+# ins3
+
+l my_second_custom_label
+# ins4
+# ins5
+"
+p Label names have the same rules as data item names. \
+A jump to a given label only consist of giving the name of the label to go to. \
+In the resulting HC code, this instruction will be replaced by a value jump with the correct amount of lines automatically computed.
+"
+l my_custom_label
+# ins1
+# ins2
+# ins3
+
+; go back to ins1
+jmp lmy_custom_label
+"
+p The last thing we did not cover is the data item jumping (using the \md\m prefix). \
+This one is nothing more that a shortcut to make a value jump using the value stored in a static data item. \
+The parameter must contain the name of the data item to target and the value will be set into at compile time.
+
+p You may reserve "value" jumping only for specific locations in the kernel program that you defined as system global before \
+so that your code can go outside its own scope to call for kernel execution. \
+This is quite complex to use and in my opinion, they should only be used in user code to specify kernel calls. \
+However, that will depend on your system strategy.
+
+
+t3 Print
+
+p This may be the simplest instruction in both UC & HC syntaxes, identified by character \mP\m here. \
+As most of the previous ones, it only requires one parameter that is the address in RAM of the text string to be printed on screen. \
+Text string will be read from RAM until a string terminator character is found (hexdecimal \m0x00\m value).
+
+p The address of that string can be given in 3 different ways : \
+using \uvalue\u referencing \mv\m (not recommended except for system kernel-defined global strings), \
+\uregister\u referencing \mr\m (address taken from register value), \
+or \udata item\u referencing \md\m (value will correspond to a static value given in a data item) :
+"
+; Print string at address currently stored in R0
+P r0000
+
+; Define some kernel-specific constants
+D w0321 syscall_error_text
+D w035a IO_error_text
+
+; Print string at address given in static data item "syscall_error_text"
+P dsyscall_error_text
+"
+
+p Here it is for the UC syntax and its instructions implemented yet. \
+The next section will focus on HC instructions and how this computer virtualisation works toward them.
+
 
 
 t2 HC in details
 
-p HC is consists in a list of instructions, each composed of 4 bytes (32 bits). \
+p As we said earlier, HC is a binary syntax that makes execution really easy for our virtual computer. \
+Also, as for the majority of binary file formats that concerns execution, HC is composed of sections. \
+We have 3 sections that must be set in that order : \
+First, the DATA JUMPER section, then the DATA section and finally the EXECUTION section. \
+
+p You may have guessed,
+
+consists in a list of instructions, each composed of 4 bytes (32 bits). \
 Each instruction is composed of some indentification information and a value parameter. \
 Here is what is inside an HC instruction exactly :
 
@@ -158,11 +318,6 @@ Fill the given number of words in RAM with \bZ\beros starting from the address s
 \bG\bet program counter at current position and store it into given destination. \
 If parameter is a value (not register), use it as address to store result into memory.
 -
-
-
-t2 UC in details
-
-p TODO
 
 
 t2 Producing kernel code

@@ -8,17 +8,23 @@
 
 // ---------------- METRICS ----------------
 
+//global
+#define DT__WINDOW_WIDTH      720
+#define DT__WINDOW_HEIGHT    1280
+#define DT__GLOBAL_THICKNESS 1.1f
+
 //text
 #define DT__NUMBER_SIZE         0.08
 #define DT__TEXT_SIZE           0.1
-#define DT__TITLE_HEIGHT_OFFSET 10
+#define DT__TITLE_HEIGHT_OFFSET 20
 
 //data boxes
 #define DT__DATA_BOX_HALFWIDTH          5
-#define DT__DATA_BOX_ASSUMED_TEXTWIDTH 35
-#define DT__DATA_BOX_HALFHEIGHT        11
-#define DT__DATA_BOX_WIDTH             (2*DT__DATA_BOX_HALFWIDTH + DT__DATA_BOX_ASSUMED_TEXTWIDTH)
-#define DT__DATA_BOX_HEIGHT            (2*DT__DATA_BOX_HALFHEIGHT)
+#define DT__DATA_BOX_ASSUMED_TEXTWIDTH  35
+#define DT__DATA_BOX_ASSUMED_TEXTHEIGHT 10
+#define DT__DATA_BOX_HALFHEIGHT          6
+#define DT__DATA_BOX_WIDTH              (2*DT__DATA_BOX_HALFWIDTH + DT__DATA_BOX_ASSUMED_TEXTWIDTH)
+#define DT__DATA_BOX_HEIGHT             (2*DT__DATA_BOX_HALFHEIGHT+ DT__DATA_BOX_ASSUMED_TEXTHEIGHT)
 
 //HC instructions
 #define DT__MAX_INSTRUCTIONS_PER_COLUMN       31
@@ -32,11 +38,15 @@
 #define DT__CPUMEM_REGISTER_TITLE_OFFSET_WIDTH  25
 #define DT__CPUMEM_STACK_TITLE_OFFSET_WIDTH     55
 #define DT__CPUMEM_REGISTER_STACK_OFFSET_HEIGHT 20
+#define DT__CPUMEM_SELECTION_SHIFT_X   3 //current selection
+#define DT__CPUMEM_SELECTION_SHIFT_Y   5
 
 //ram
 #define DT__MAX_RAM_WORD_PER_COLUMN 47
-#define DT__RAM_PC_SHIFT_X           5 //program counter
+#define DT__RAM_PC_SHIFT_X           3 //program counter
 #define DT__RAM_PC_SHIFT_Y           5
+#define DT__RAM_SPC_SHIFT_X          5 //supervised program counter
+#define DT__RAM_SPC_SHIFT_Y          7
 
 //screen
 #define DT__SCREEN_HALFWIDTH  200
@@ -58,9 +68,9 @@
 #define DT__INSTRUCTIONS_X          10
 #define DT__INSTRUCTIONS_Y        1040
 #define DT__CPUMEMS_X             1555
-#define DT__CPUMEMS_Y             1040
+#define DT__CPUMEMS_Y             1035
 #define DT__RAM_X                   10
-#define DT__RAM_Y                 1040
+#define DT__RAM_Y                 1035
 #define DT__SCREEN_X              1710
 #define DT__SCREEN_Y               260
 #define DT__CURRENT_INSTRUCTION_X 1620
@@ -92,6 +102,16 @@
 #define DT__COLOR_RAM_PC_R   0
 #define DT__COLOR_RAM_PC_G 255
 #define DT__COLOR_RAM_PC_B   0
+
+//ram supervised program counter
+#define DT__COLOR_RAM_SPC_R 255
+#define DT__COLOR_RAM_SPC_G   0
+#define DT__COLOR_RAM_SPC_B   0
+
+//cpumem selection
+#define DT__COLOR_CPUMEM_SELECTION_R 110
+#define DT__COLOR_CPUMEM_SELECTION_G 110
+#define DT__COLOR_CPUMEM_SELECTION_B 255
 
 //screen
 #define DT__COLOR_SCREEN_BACKGROUND_R   0
@@ -133,7 +153,7 @@ void displayRAM(int x, int y, cpt* computer);
 void displayScreen(int x, int y, cpt* computer);
 
 //current instruction
-void displayCurrentInstruction(int x, int y, cpt* computer);
+void displayCurrentSupervisedInstruction(int x, int y, cpt* computer);
 
 
 

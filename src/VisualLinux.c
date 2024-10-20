@@ -28,9 +28,8 @@ extern int            S2DE_background_red;
 extern int            S2DE_background_green;
 extern int            S2DE_background_blue;
 
-//VisualLinux constants
-#define WINDOW_DEFAULT_WIDTH  720
-#define WINDOW_DEFAULT_HEIGHT 1280
+//program constants
+#define WINDOW_TITLE_TEXT "Visual Linux"
 
 
 
@@ -61,6 +60,7 @@ void S2DE_event(int event){
 	cpt* computer = computerAccess(GET);
 	switch(event){
 		case S2DE_DISPLAY:
+			S2DE_setThickness(DT__GLOBAL_THICKNESS);
 
 			//memory
 			displayCPUMems(DT__CPUMEMS_X, DT__CPUMEMS_Y, computer);
@@ -70,15 +70,25 @@ void S2DE_event(int event){
 			displayScreen(DT__SCREEN_X, DT__SCREEN_Y, computer);
 
 			//current instruction
-			displayCurrentInstruction(DT__CURRENT_INSTRUCTION_X, DT__CURRENT_INSTRUCTION_Y, computer);
+			displayCurrentSupervisedInstruction(DT__CURRENT_INSTRUCTION_X, DT__CURRENT_INSTRUCTION_Y, computer);
 		break;
 
 		case S2DE_KEYBOARD:
 			if(S2DE_keyState == S2DE_KEY_PRESSED) {
 				switch(S2DE_key){
 
-					//move forward just one step
-					case S2DE_KEY_RIGHT: operateCPU(computer); break;
+					//move backward one step
+					case S2DE_KEY_LEFT: case S2DE_KEY_UP:
+						if(computer->currentSupervisedInstructionIndex > 0) { computer->currentSupervisedInstructionIndex--; S2DE_refresh(); }
+					break;
+
+					//move forward one step
+					case S2DE_KEY_RIGHT: case S2DE_KEY_DOWN:
+						if(computer->currentSupervisedInstructionIndex < CPT__RAM_LENGTH-1) { computer->currentSupervisedInstructionIndex++; S2DE_refresh(); }
+					break;
+
+					//execute current instruction
+					case S2DE_KEY_RETURN: operateCPU(computer); S2DE_refresh(); break;
 				}
 			}
 		break;
@@ -110,6 +120,12 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
+	//check endianness
+	if(isBigEndian()) {
+		fputs("This program does not work on big endian machines.\n", stderr);
+		exit(EXIT_FAILURE);
+	}
+
 	//create computer instance AND set also its static pointer to allow global access
 	cpt* computer = computerAccess( newComputer(argv[1]) );
 
@@ -138,13 +154,13 @@ int main(int argc, char **argv) {
 	writeOnScreen(computer->screen, "visualizing Linux kernel exe");
 	writeOnScreen(computer->screen, "in a more more visual way !");
 
-	//set custom background color
+	//a bit of aesthetics
 	S2DE_background_red   = DT__COLOR_BACKGROUND_R;
 	S2DE_background_green = DT__COLOR_BACKGROUND_G;
 	S2DE_background_blue  = DT__COLOR_BACKGROUND_B;
 
 	//launch window
-	S2DE_init(argc,argv, "Visual Linux", WINDOW_DEFAULT_WIDTH, WINDOW_DEFAULT_HEIGHT);
+	S2DE_init(argc,argv, WINDOW_TITLE_TEXT, DT__WINDOW_WIDTH, DT__WINDOW_HEIGHT);
 	S2DE_fullScreen();
 	S2DE_start();
 

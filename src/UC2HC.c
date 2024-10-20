@@ -62,8 +62,8 @@ char checkMode(char* modeString) {
 	return modeString[0];
 }
 void checkHCIndex(ulng lineNbr, ulng index) {
-	if(index >= MAX_HC_LENGTH) {
-		fprintf(stderr, "UC2HC: [line %llu] Too much HC to process (maximum %i words allowed).\n", lineNbr, MAX_HC_LENGTH);
+	if(index >= 2ULL*MAX_HC_LENGTH) {
+		fprintf(stderr, "UC2HC: [line %llu] Too much HC to process (maximum %i words = %llu bytes allowed).\n", lineNbr, MAX_HC_LENGTH, 2ULL*MAX_HC_LENGTH);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -189,21 +189,25 @@ void checkSpaceSeparator(ulng lineNbr, char c) {
 }
 
 //main part
-char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength is an output value (should NOT be set to NULL)
-	ulng UCContentLength = strlen(UCContent);
+buffer* compile(char mode, buffer* UCContent) {
 
 	//set mode flag to apply
 	ushr modeFlag = CPT__INSTRUCTION_MODE_USER;
 	if(mode == 'k') { modeFlag = CPT__INSTRUCTION_MODE_KERNEL; }
 
 	//allocate maximum program size
-	ushr* HCContent = malloc(MAX_HC_LENGTH*sizeof(ushr)); //only the necessary bytes will be written
+	buffer* HCContent = malloc(sizeof(buffer));
+	HCContent->data   = malloc(MAX_HC_LENGTH*sizeof(ushr)); //only the necessary bytes will be written
 
 	//create symbol tables
 	sym* datTab = malloc(DATA_TABLE_LENGTH * sizeof(sym));
 	for(ulng s=0ULL; s < DATA_TABLE_LENGTH; s++) { datTab[s].name = NULL; }
 	sym* lblTab = malloc(LABEL_TABLE_LENGTH * sizeof(sym));
 	for(ulng l=0ULL; l < LABEL_TABLE_LENGTH; l++) { lblTab[l].name = NULL; }
+
+	//optimization (and also shortcuts btw)
+	char* input  = UCContent->data;
+	char* output = HCContent->data;
 
 
 
@@ -231,30 +235,32 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 	//STEP 1: CREATING DATA SECTION (first read of UC content)
 
 	//start HC content 2 words after the beginning (2 words = 1 instruction => for the data section JUMPER)
-	ulng currentHCIndex = 2ULL;
+	ulng currentHCIndex = 4ULL;
 
 	//read input content
 	ulng currentLine_startIndex = 0ULL;
 	ulng lineNbr                = 1ULL;
-	for(ulng c=0ULL; c < UCContentLength; c++) {
-		if(UCContent[c] == '\n') {
+	ulng stringFirstIndex;
+	ushr pTypeFlag, header, pValue, b1, b2;
+	bool escaped, foundEnd;
+	for(ulng c=0ULL; c < UCContent->length; c++) {
+		if(input[c] == '\n') {
 			lineNbr++;
 
 			//take care of D instructions only (1st byte)
 			ulng lineLength = c - currentLine_startIndex;
-			if(lineLength > 0 && UCContent[currentLine_startIndex] == 'D') {
+			if(lineLength > 0 && input[currentLine_startIndex] == 'D') {
 				checkNotEnoughCharacters(lineNbr, lineLength, 3, "DATA");
 
 				//check 2nd & 3rd byte
 				currentLine_startIndex  = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "DATA"); //<=> currentLine_startIndex++ with sign security
-				checkSpaceSeparator(lineNbr, UCContent[currentLine_startIndex]);
+				checkSpaceSeparator(lineNbr, input[currentLine_startIndex]);
 				currentLine_startIndex  = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "DATA");
-				char dataTypeIdentifier = UCContent[currentLine_startIndex];
+				char dataTypeIdentifier = input[currentLine_startIndex];
 				currentLine_startIndex  = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "DATA");
 
 				//extract full data depending on the data type
 				ulng paramLength = c - currentLine_startIndex;
-				ushr pValue;
 				ulng strLength;
 				switch(dataTypeIdentifier) {
 
@@ -263,44 +269,74 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 
 						//process value
 						checkNotEnoughCharacters(lineNbr, paramLength, 4, "DATA WORD");
-						pValue =
-							(biHexToByte(
-								lineNbr,
-								UCContent[currentLine_startIndex  ],
-								UCContent[currentLine_startIndex+1]
-							) << 8) | biHexToByte(
-								lineNbr,
-								UCContent[currentLine_startIndex+2],
-								UCContent[currentLine_startIndex+3]
-							);
+						b1 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex  ], input[currentLine_startIndex+1]);
+						b2 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex+2], input[currentLine_startIndex+3]);
+						pValue = b1 << 8 | b2;
 
 						//another space separator
 						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 4ULL, c, "DATA WORD SYMBOL NAME SEPARATOR");
-						checkSpaceSeparator(lineNbr, UCContent[currentLine_startIndex]);
+						checkSpaceSeparator(lineNbr, input[currentLine_startIndex]);
 
 						//process symbol name
 						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "DATA WORD");
 						paramLength -= 5;
 						checkNotEnoughCharacters(lineNbr, paramLength, 1, "DATA WORD SYMBOL NAME");
 						addSymbol(
-							lineNbr,                          datTab,      DATA_TABLE_LENGTH,
-							UCContent+currentLine_startIndex, paramLength, currentHCIndex
+							lineNbr,                      datTab,      DATA_TABLE_LENGTH,
+							input+currentLine_startIndex, paramLength, currentHCIndex
 						);
 
-						//write raw word in HC content
+						//write raw word in HC content !!!WARNING LITTLE ENDIAN BEHAVIOR
 						checkHCIndex(lineNbr, currentHCIndex);
-						HCContent[currentHCIndex++] = pValue;
+						output[currentHCIndex++] = pValue & 0x00ff;
+						checkHCIndex(lineNbr, currentHCIndex);
+						output[currentHCIndex++] = pValue >> 8;
 					break;
 
-					//text strings <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< TODO
+					//text strings
 					case '"':
-						fprintf(stderr, "UC2HC: [line %llu] String data items not implemented yet.\n", lineNbr);
-						exit(EXIT_FAILURE);
+						stringFirstIndex = currentLine_startIndex;
+						escaped = false; foundEnd = false;
+						for(ulng p=0ULL; p < paramLength; p++) {
+
+							//end of string
+							if(escaped) { escaped = false; }
+							else if(input[currentLine_startIndex] == '\\') { escaped = true; continue; }
+							else if(input[currentLine_startIndex] ==  '"') { foundEnd = false; break;  }
+
+							//inside string => store it
+							checkHCIndex(lineNbr, currentHCIndex);
+							output[currentHCIndex++] = input[currentLine_startIndex];
+							currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "DATA STRING");
+							paramLength--;
+						}
+
+						//no end delimiter found
+						if(!foundEnd) {
+							fprintf(stderr, "UC2HC: [line %llu] Missing string terminator '\"'.\n", lineNbr);
+							exit(EXIT_FAILURE);
+						}
+
+						//adding string terminator
+						checkHCIndex(lineNbr, currentHCIndex);
+						output[currentHCIndex++] = '\x00';
+
+						//another space separator
+						checkSpaceSeparator(lineNbr, input[currentLine_startIndex]);
+
+						//process symbol name
+						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "DATA STRING");
+						paramLength--;
+						checkNotEnoughCharacters(lineNbr, paramLength, 1, "DATA STRING SYMBOL NAME");
+						addSymbol(
+							lineNbr,                      datTab,      DATA_TABLE_LENGTH,
+							input+currentLine_startIndex, paramLength, stringFirstIndex
+						);
 					break;
 
 					//unknown identifier
 					default:
-						fprintf(stderr, "UC2HC: [line %llu] Unknown identifier '%c' in DATA instruction.\n", lineNbr, UCContent[currentLine_startIndex]);
+						fprintf(stderr, "UC2HC: [line %llu] Unknown identifier '%c' in DATA instruction.\n", lineNbr, input[currentLine_startIndex]);
 						exit(EXIT_FAILURE);
 				}
 			}
@@ -314,9 +350,12 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 
 	//STEP 2: SET DATA SECTION JUMPER
 
-	//set custom jumper as first instruction of the program
-	HCContent[0] = modeFlag | CPT__INSTRUCTION_PTYP_VALUE | CPT__INSTRUCTION_ID_JMP;
-	HCContent[1] = currentHCIndex;
+	//set custom jumper as first instruction of the program !!!WARNING LITTLE ENDIAN BEHAVIOR
+	header    = modeFlag | CPT__INSTRUCTION_PTYP_VALUE | CPT__INSTRUCTION_ID_JMP;
+	output[0] = header & 0x00ff;
+	output[1] = header >> 8;
+	output[2] = currentHCIndex & 0x00ff;
+	output[3] = currentHCIndex >> 8;
 
 
 
@@ -325,8 +364,8 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 	//reading input content
 	currentLine_startIndex = 0ULL;
 	lineNbr                = 1ULL;
-	for(ulng c=0ULL; c < UCContentLength; c++) {
-		if(UCContent[c] == '\n') {
+	for(ulng c=0ULL; c < UCContent->length; c++) {
+		if(input[c] == '\n') {
 			lineNbr++;
 
 			//empty line => skip it
@@ -337,14 +376,15 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 			checkNotEnoughCharacters(lineNbr, lineLength, 3, "UC");
 
 			//check first 2 bytes
-			char instructionIdentifier = UCContent[currentLine_startIndex];
+			char instructionIdentifier = input[currentLine_startIndex];
 			currentLine_startIndex     = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "UC");
-			checkSpaceSeparator(lineNbr, UCContent[currentLine_startIndex]);
-			currentLine_startIndex     = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "UC");
+
+			//first space separator
+			checkSpaceSeparator(lineNbr, input[currentLine_startIndex]);
+			currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "UC");
 
 			//redirections
 			ulng  paramLength = c - currentLine_startIndex;
-			ushr  pTypeFlag, pValue;
 			switch(instructionIdentifier) {
 
 				//comment or Data (do nothing)
@@ -354,8 +394,8 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 				case 'L':
 					checkNotEnoughCharacters(lineNbr, paramLength, 1, "LABEL");
 					addSymbol(
-						lineNbr,                          lblTab,      LABEL_TABLE_LENGTH,
-						UCContent+currentLine_startIndex, paramLength, currentHCIndex
+						lineNbr,                      lblTab,      LABEL_TABLE_LENGTH,
+						input+currentLine_startIndex, paramLength, currentHCIndex
 					);
 				break;
 
@@ -364,7 +404,7 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 					checkNotEnoughCharacters(lineNbr, paramLength, 1, "PRINT");
 
 					//case 1: resolve data symbol
-					if(UCContent[currentLine_startIndex] == 's') {
+					if(input[currentLine_startIndex] == 'd') {
 						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "PRINT DATA ITEM SYMBOL NAME");
 						paramLength--;
 						checkNotEnoughCharacters(lineNbr, paramLength, 1, "PRINT DATA ITEM SYMBOL NAME"); //symbol name must have at least 1 character
@@ -372,34 +412,32 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 						//set parameter type & value
 						pTypeFlag = CPT__INSTRUCTION_PTYP_VALUE;
 						pValue    = getSymbol(
-							lineNbr,                          datTab,     DATA_TABLE_LENGTH,
-							UCContent+currentLine_startIndex, paramLength
+							lineNbr,                      datTab,     DATA_TABLE_LENGTH,
+							input+currentLine_startIndex, paramLength
 						)->address;
 					}
 
 					//case 2: raw hex value (register or value)
 					else {
-						pTypeFlag = getPTypeFlag(lineNbr, UCContent[currentLine_startIndex]);
+						pTypeFlag = getPTypeFlag(lineNbr, input[currentLine_startIndex]);
 						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "PRINT DATA VALUE");
 						paramLength--;
 						checkNotEnoughCharacters(lineNbr, paramLength, 4, "PRINT DATA VALUE");
-						pValue =
-							(biHexToByte(
-								lineNbr,
-								UCContent[currentLine_startIndex  ],
-								UCContent[currentLine_startIndex+1]
-							) << 8) | biHexToByte(
-								lineNbr,
-								UCContent[currentLine_startIndex+2],
-								UCContent[currentLine_startIndex+3]
-							);
+						b1 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex  ], input[currentLine_startIndex+1]);
+						b2 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex+2], input[currentLine_startIndex+3]);
+						pValue = b1 << 8 | b2;
 					}
 
-					//add HC instruction
+					//add HC instruction !!!WARNING LITTLE ENDIAN BEHAVIOR
+					header = modeFlag | pTypeFlag | CPT__INSTRUCTION_ID_PRT;
 					checkHCIndex(lineNbr, currentHCIndex);
-					HCContent[currentHCIndex++] = modeFlag | pTypeFlag | CPT__INSTRUCTION_ID_PRT;
+					output[currentHCIndex++] = header & 0x00ff;
 					checkHCIndex(lineNbr, currentHCIndex);
-					HCContent[currentHCIndex++] = pValue;
+					output[currentHCIndex++] = header >> 8;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue & 0x00ff;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue >> 8;
 				break;
 
 				//jump
@@ -407,7 +445,7 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 					checkNotEnoughCharacters(lineNbr, paramLength, 1, "JUMP");
 
 					//case 1: resolve data symbol
-					if(UCContent[currentLine_startIndex] == 's') {
+					if(input[currentLine_startIndex] == 'd') {
 						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "JUMP DATA ITEM SYMBOL NAME");
 						paramLength--;
 						checkNotEnoughCharacters(lineNbr, paramLength, 1, "JUMP DATA ITEM SYMBOL NAME"); //symbol name must have at least 1 character
@@ -415,13 +453,13 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 						//set parameter type & value
 						pTypeFlag = CPT__INSTRUCTION_PTYP_VALUE;
 						pValue    = getSymbol(
-							lineNbr,                          datTab,     DATA_TABLE_LENGTH,
-							UCContent+currentLine_startIndex, paramLength
+							lineNbr,                      datTab,     DATA_TABLE_LENGTH,
+							input+currentLine_startIndex, paramLength
 						)->address;
 					}
 
 					//case 2: resolve label symbol
-					else if(UCContent[currentLine_startIndex] == 'l') {
+					else if(input[currentLine_startIndex] == 'l') {
 						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "JUMP LABEL SYMBOL NAME");
 						paramLength--;
 						checkNotEnoughCharacters(lineNbr, paramLength, 1, "JUMP LABEL SYMBOL NAME"); //symbol name must have at least 1 character
@@ -429,34 +467,32 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 						//set parameter type & value
 						pTypeFlag = CPT__INSTRUCTION_PTYP_VALUE;
 						pValue    = getSymbol(
-							lineNbr,                          lblTab,     LABEL_TABLE_LENGTH,
-							UCContent+currentLine_startIndex, paramLength
+							lineNbr,                      lblTab,     LABEL_TABLE_LENGTH,
+							input+currentLine_startIndex, paramLength
 						)->address;
 					}
 
 					//case 2: raw hex value (register or value)
 					else {
-						pTypeFlag = getPTypeFlag(lineNbr, UCContent[currentLine_startIndex]);
+						pTypeFlag = getPTypeFlag(lineNbr, input[currentLine_startIndex]);
 						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "JUMP DATA VALUE");
 						paramLength--;
 						checkNotEnoughCharacters(lineNbr, paramLength, 4, "JUMP DATA VALUE");
-						pValue =
-							(biHexToByte(
-								lineNbr,
-								UCContent[currentLine_startIndex  ],
-								UCContent[currentLine_startIndex+1]
-							) << 8) | biHexToByte(
-								lineNbr,
-								UCContent[currentLine_startIndex+2],
-								UCContent[currentLine_startIndex+3]
-							);
+						b1 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex  ], input[currentLine_startIndex+1]);
+						b2 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex+2], input[currentLine_startIndex+3]);
+						pValue = b1 << 8 | b2;
 					}
 
-					//add HC instruction
+					//add HC instruction !!!WARNING LITTLE ENDIAN BEHAVIOR
+					header = modeFlag | pTypeFlag | CPT__INSTRUCTION_ID_JMP;
 					checkHCIndex(lineNbr, currentHCIndex);
-					HCContent[currentHCIndex++] = modeFlag | pTypeFlag | CPT__INSTRUCTION_ID_JMP;
+					output[currentHCIndex++] = header & 0x00ff;
 					checkHCIndex(lineNbr, currentHCIndex);
-					HCContent[currentHCIndex++] = pValue;
+					output[currentHCIndex++] = header << 8;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue & 0x00ff;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue << 8;
 				break;
 
 				//unknown instruction
@@ -470,15 +506,15 @@ char* compile(char mode, char* UCContent, ulng* resultLength) { //resultLength i
 		}
 	}
 
-	//free sym tabs: no need to free names stored inside, they are only pointers to locations in UCContent
+	//free sym tabs: no need to free names stored inside, they are only pointers to locations in input
 	free(datTab);
 	free(lblTab);
 
 	//set length of HCContent
-	resultLength[0] = currentHCIndex * sizeof(ushr); //number of bytes
+	HCContent->length = currentHCIndex * sizeof(ushr); //number of bytes
 
 	//operation successful
-	return (char*)HCContent;
+	return HCContent;
 }
 
 
@@ -500,6 +536,12 @@ int main(int argc, char** argv) {
 		exit(EXIT_FAILURE);
 	}
 
+	//endianness
+	if(isBigEndian()) {
+		fputs("This program can't be executed on big endian machines.\n", stderr);
+		exit(EXIT_FAILURE);
+	}
+
 	//check mode
 	char mode = checkMode(argv[1]);
 
@@ -515,17 +557,16 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "UC2HC: Incorrect file extension in input file '%s' ('.uc' expected).\n", inputFilename);
 		exit(EXIT_FAILURE);
 	}
-	char* UCContent = readFile(inputFilename);
+	buffer* UCContent = readFile(inputFilename);
 
 	//compile from UC to HC
-	ulng  HCContentLength = 0ULL;
-	char* HCContent       = compile(mode, UCContent, &HCContentLength);
-	free(UCContent);
+	buffer* HCContent = compile(mode, UCContent);
+	freeBuffer(UCContent);
 
 	//write out HC file
 	inputFilename[inputFilenameLength-2] = 'h'; //replace ".uc" by ".hc"
-	writeFile(inputFilename, HCContent, HCContentLength);
-	free(HCContent);
+	writeFile(inputFilename, HCContent);
+	freeBuffer(HCContent);
 
 	//nothing went wrong
 	return EXIT_SUCCESS;

@@ -11,6 +11,10 @@
 typedef unsigned short     ushr;
 typedef unsigned int       uint;
 typedef unsigned long long ulng;
+typedef struct {
+	char* data;
+	ulng  length;
+} buffer;
 
 
 
@@ -19,9 +23,13 @@ typedef unsigned long long ulng;
 
 // ---------------- FUNCTIONS ----------------
 
+//ednianness
+bool isBigEndian();
+
 //IO
-char* readFile(char* filename);
-void  writeFile(char* filename, char* content, ulng contentLength);
+void freeBuffer(buffer* content);
+buffer* readFile(char* filename);
+void  writeFile(char* filename, buffer* content);
 
 
 

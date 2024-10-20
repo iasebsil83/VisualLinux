@@ -47,11 +47,12 @@ typedef struct {
 //computer
 typedef struct {
 	char*    storageDir;
-	ushr     currentInstructionIndex; //index of current instruction in RAM
-	cpuMem** cpuMems;                 //cpu
+	ushr     currentInstructionIndex;           //index of current instruction in RAM
+	ushr     currentSupervisedInstructionIndex; //index of current SUPERVISED instruction in RAM
+	cpuMem** cpuMems;                           //cpu
 	ushr     currentCpuMemIndex;
-	ushr*    ram;                     //ram
-	char**   screen;                  //screen
+	ushr*    ram;                               //ram
+	char**   screen;                            //screen
 } cpt;
 
 
@@ -69,7 +70,7 @@ char* readStringFromRAM(ushr* ram, ushr address);
 void writeOnScreen(char** screen, char* line);
 
 //execution
-void loadFromStorage(ushr* ram, ushr startIndex, char* filename);
+void loadFromStorage(ushr* ram, ulng startIndex, char* filename);
 void stackPush(ushr* stack, ushr value);
 ushr stackPop(ushr* stack);
 void operateCPU(cpt* computer);

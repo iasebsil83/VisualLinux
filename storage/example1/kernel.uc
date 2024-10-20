@@ -1,7 +1,7 @@
 
 L my_Custom_Label
 P vfeab
-P s_starting_underscore
+P d_starting_underscore
 
 D wdead myVar
 D wbeef My_VAR_
@@ -12,8 +12,8 @@ D w9876 _starting_underscore
 ; A r0000
 D wbeef My_VAR_two
 P rcafe
-P sMy_VAR_
-P smyVar
+P dMy_VAR_
+P dmyVar
 
 L alpha
 P v1357
