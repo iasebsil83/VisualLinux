@@ -214,13 +214,32 @@ l my_custom_label
 jmp lmy_custom_label
 "
 p The last thing we did not cover is the data item jumping (using the \md\m prefix). \
-This one is nothing more that a shortcut to make a value jump using the value stored in a static data item. \
+This one is nothing more than a shortcut to make a value jump using the value stored in a static data item. \
 The parameter must contain the name of the data item to target and the value will be set into at compile time.
 
-p You may reserve "value" jumping only for specific locations in the kernel program that you defined as system global before \
-so that your code can go outside its own scope to call for kernel execution. \
-This is quite complex to use and in my opinion, they should only be used in user code to specify kernel calls. \
-However, that will depend on your system strategy.
+p At first sight, we could think about "value" jumps as a useful way to get outside the user code \
+such as using specific kernel locations for syscalls... \
+This may not be that simple. \
+Keep in mind that jumps are \bALWAYS\b made \urelatively\u to the current position. \
+Depending on where your kernel will load your program in RAM, you may not be able to know where to jump to reach that special location. \
+However, by using some smart mechanisms, this can be done in various ways such as in the examples given.
+
+
+t3 UC : Add / Multiply
+
+p Additions and multiplications are associated to identifiers \mA\m and \mX\m. \
+They requires one parameter that will be the \u\bsecond\b\u operand of the calculation. \
+The first operand is taken from register \mR0000\m and result will then be stored in that same register.
+
+p As parameter, we can use both use \uvalues\u (\mv\m), \uregisters\u (\mr\m) or \udata items\u (\md\m) \
+that is nothing more than the static value stored at compiled time in a data item.
+"
+; R0 + R3 => R0
+A r0003
+
+; R0 * 2 => R0
+X v0002
+"
 
 
 t3 Print
@@ -249,28 +268,47 @@ p Here it is for the UC syntax and its instructions implemented yet. \
 The next section will focus on HC instructions and how this computer virtualisation works toward them.
 
 
+t3 UC : Additionnal features
+
+p One pretty useful thing in the UC syntax is the use of the special value \m%%%%\m. \
+It refers to the current HC instruction index in your code. \
+Obviously, this field will be replaced at compile time. \
+This can be used as a way to do stuff outside of your current program scope for example.
+
+
 
 t2 HC in details
 
 p As we said earlier, HC is a binary syntax that makes execution really easy for our virtual computer. \
 Also, as for the majority of binary file formats that concerns execution, HC is composed of sections. \
-We have 3 sections that must be set in that order : \
-First, the DATA JUMPER section, then the DATA section and finally the EXECUTION section. \
+We have 3 sections (that must be given in that order) : \
+First, the DATA JUMPER section, then the DATA section and finally the EXECUTION section.
 
-p You may have guessed,
+p You may have guessed we will have to manage some data elements before the real code execution. \
+This DATA section is preceeded by its JUMPER that is nothing more than a JUMP HC instruction \
+that goes over the DATA section to directly reach our program code. \
+Therefore, this JUMPER is quite simple, nothing to say about it except that it holds the size of the DATA section...
 
-consists in a list of instructions, each composed of 4 bytes (32 bits). \
-Each instruction is composed of some indentification information and a value parameter. \
+p The DATA section however is more interesting because it contains every element we declared in our UC code using the \mD\m identifier (data items). \
+Those elements are \u\bstatic\b\u and have no access restriction (read/write/execute). \
+Also, as said before in UC instructions, static data items are accessible from anywhere in the program. \
+Actually, they are part of the program itself. \
+The data section is nothing more than each data item declared stored one after another. \
+Strings have an additionnal 0 terminator byte added as end delimiter.
+
+p Then, directly after that data section you will find the EXECUTION section. \
+This consists in a list of instructions, each composed of 4 bytes (32 bits), that is 2 words in our virtual computer. \
+Each instruction is composed of some identification information (header) and a value parameter. \
 Here is what is inside an HC instruction exactly :
 
 p The first bit is the \umode\u of that instruction, 0:user, 1:kernel. \
-Then another individual bit gives the information whether the following parameter will concern \
+Then, another individual bit gives the information whether the following parameter will concern \
 a literal value (0) or rather target a register (1). \
 The next 14 bits are used to give the instruction ID (explained a few paragraphs below). \
 Finally, as you might have guessed, the remaining 16 bits forms the parameter value to be used with that instruction.
 
-p There is no separator between HC instructions, an HC file must only contain a multiple of 4 bytes, \
-each block considered as an HC instruction. \
+p There is no separator between HC instructions. \
+Except when jumping to a specific location, the virtual computer will always jump by steps of 4 bytes after each instruction. \
 Here is the list of all HC instruction IDs with their explanation :
 - ID:0, \uAddition\u
 Perform an \bAddition\b between registers R0000 and given parameter and write result into R0000. \

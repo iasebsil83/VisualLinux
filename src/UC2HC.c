@@ -188,6 +188,17 @@ void checkSpaceSeparator(ulng lineNbr, char c) {
 	}
 }
 
+ushr getWord(ulng lineNbr, char* text, ushr currentInstructionPos) {
+
+	//special value
+	if(text[0] == '%' && text[1] == '%' && text[2] == '%' && text[3] == '%') { return currentInstructionPos; }
+
+	//regular value
+	char hv1 = 0x00ff & biHexToByte(lineNbr, text[0], text[1]);
+	char hv2 = 0x00ff & biHexToByte(lineNbr, text[2], text[3]);
+	return hv1 << 8 | hv2;
+}
+
 //main part
 buffer* compile(char mode, buffer* UCContent) {
 
@@ -269,9 +280,7 @@ buffer* compile(char mode, buffer* UCContent) {
 
 						//process value
 						checkNotEnoughCharacters(lineNbr, paramLength, 4, "DATA WORD");
-						b1 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex  ], input[currentLine_startIndex+1]);
-						b2 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex+2], input[currentLine_startIndex+3]);
-						pValue = b1 << 8 | b2;
+						pValue = getWord(lineNbr, input+currentLine_startIndex, currentHCIndex);
 
 						//another space separator
 						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 4ULL, c, "DATA WORD SYMBOL NAME SEPARATOR");
@@ -390,6 +399,8 @@ buffer* compile(char mode, buffer* UCContent) {
 				//comment or Data (do nothing)
 				case ';': case 'D': currentLine_startIndex = c+1; continue; break;
 
+
+
 				//label
 				case 'L':
 					checkNotEnoughCharacters(lineNbr, paramLength, 1, "LABEL");
@@ -398,6 +409,90 @@ buffer* compile(char mode, buffer* UCContent) {
 						input+currentLine_startIndex, paramLength, currentHCIndex
 					);
 				break;
+
+
+
+				//add
+				case 'A':
+					checkNotEnoughCharacters(lineNbr, paramLength, 1, "ADD");
+
+					//case 1: resolve data symbol
+					if(input[currentLine_startIndex] == 'd') {
+						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "ADD DATA ITEM SYMBOL NAME");
+						paramLength--;
+						checkNotEnoughCharacters(lineNbr, paramLength, 1, "ADD DATA ITEM SYMBOL NAME"); //symbol name must have at least 1 character
+
+						//set parameter type & value
+						pTypeFlag = CPT__INSTRUCTION_PTYP_VALUE;
+						pValue    = getSymbol(
+							lineNbr,                      datTab,     DATA_TABLE_LENGTH,
+							input+currentLine_startIndex, paramLength
+						)->address;
+					}
+
+					//case 2: raw hex value (register or value)
+					else {
+						pTypeFlag = getPTypeFlag(lineNbr, input[currentLine_startIndex]);
+						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "ADD DATA VALUE");
+						paramLength--;
+						checkNotEnoughCharacters(lineNbr, paramLength, 4, "ADD DATA VALUE");
+						pValue = getWord(lineNbr, input+currentLine_startIndex, currentHCIndex);
+					}
+
+					//add HC instruction !!!WARNING LITTLE ENDIAN BEHAVIOR
+					header = modeFlag | pTypeFlag | CPT__INSTRUCTION_ID_ADD;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = header & 0x00ff;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = header >> 8;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue & 0x00ff;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue >> 8;
+				break;
+
+
+
+				//multiply
+				case 'X':
+					checkNotEnoughCharacters(lineNbr, paramLength, 1, "MULTIPLY");
+
+					//case 1: resolve data symbol
+					if(input[currentLine_startIndex] == 'd') {
+						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "MULTIPLY DATA ITEM SYMBOL NAME");
+						paramLength--;
+						checkNotEnoughCharacters(lineNbr, paramLength, 1, "MULTIPLY DATA ITEM SYMBOL NAME"); //symbol name must have at least 1 character
+
+						//set parameter type & value
+						pTypeFlag = CPT__INSTRUCTION_PTYP_VALUE;
+						pValue    = getSymbol(
+							lineNbr,                      datTab,     DATA_TABLE_LENGTH,
+							input+currentLine_startIndex, paramLength
+						)->address;
+					}
+
+					//case 2: raw hex value (register or value)
+					else {
+						pTypeFlag = getPTypeFlag(lineNbr, input[currentLine_startIndex]);
+						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "MULTIPLY DATA VALUE");
+						paramLength--;
+						checkNotEnoughCharacters(lineNbr, paramLength, 4, "MULTIPLY DATA VALUE");
+						pValue = getWord(lineNbr, input+currentLine_startIndex, currentHCIndex);
+					}
+
+					//add HC instruction !!!WARNING LITTLE ENDIAN BEHAVIOR
+					header = modeFlag | pTypeFlag | CPT__INSTRUCTION_ID_MUL;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = header & 0x00ff;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = header >> 8;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue & 0x00ff;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue >> 8;
+				break;
+
+
 
 				//print
 				case 'P':
@@ -423,9 +518,7 @@ buffer* compile(char mode, buffer* UCContent) {
 						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "PRINT DATA VALUE");
 						paramLength--;
 						checkNotEnoughCharacters(lineNbr, paramLength, 4, "PRINT DATA VALUE");
-						b1 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex  ], input[currentLine_startIndex+1]);
-						b2 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex+2], input[currentLine_startIndex+3]);
-						pValue = b1 << 8 | b2;
+						pValue = getWord(lineNbr, input+currentLine_startIndex, currentHCIndex);
 					}
 
 					//add HC instruction !!!WARNING LITTLE ENDIAN BEHAVIOR
@@ -439,6 +532,8 @@ buffer* compile(char mode, buffer* UCContent) {
 					checkHCIndex(lineNbr, currentHCIndex);
 					output[currentHCIndex++] = pValue >> 8;
 				break;
+
+
 
 				//jump
 				case 'J':
@@ -478,9 +573,7 @@ buffer* compile(char mode, buffer* UCContent) {
 						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "JUMP DATA VALUE");
 						paramLength--;
 						checkNotEnoughCharacters(lineNbr, paramLength, 4, "JUMP DATA VALUE");
-						b1 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex  ], input[currentLine_startIndex+1]);
-						b2 = 0x00ff & biHexToByte(lineNbr, input[currentLine_startIndex+2], input[currentLine_startIndex+3]);
-						pValue = b1 << 8 | b2;
+						pValue = getWord(lineNbr, input+currentLine_startIndex, currentHCIndex);
 					}
 
 					//add HC instruction !!!WARNING LITTLE ENDIAN BEHAVIOR
@@ -494,6 +587,8 @@ buffer* compile(char mode, buffer* UCContent) {
 					checkHCIndex(lineNbr, currentHCIndex);
 					output[currentHCIndex++] = pValue << 8;
 				break;
+
+
 
 				//unknown instruction
 				default:
