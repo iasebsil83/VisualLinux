@@ -226,8 +226,8 @@ void displayCurrentSupervisedInstruction(int x, int y, cpt* computer) {
 			case CPT__INSTRUCTION_ID_JMP: text[1] = 'J'; text[2] = 'M'; text[3] = 'P'; break;
 			case CPT__INSTRUCTION_ID_INP: text[1] = 'I'; text[2] = 'N'; text[3] = 'P'; break;
 			case CPT__INSTRUCTION_ID_OUP: text[1] = 'O'; text[2] = 'U'; text[3] = 'P'; break;
-			case CPT__INSTRUCTION_ID_MEM: text[1] = 'M'; text[2] = 'E'; text[3] = 'M'; break;
-			case CPT__INSTRUCTION_ID_REG: text[1] = 'R'; text[2] = 'E'; text[3] = 'G'; break;
+			case CPT__INSTRUCTION_ID_REA: text[1] = 'R'; text[2] = 'E'; text[3] = 'A'; break;
+			case CPT__INSTRUCTION_ID_WRI: text[1] = 'W'; text[2] = 'R'; text[3] = 'I'; break;
 			case CPT__INSTRUCTION_ID_LOA: text[1] = 'L'; text[2] = 'O'; text[3] = 'A'; break;
 			case CPT__INSTRUCTION_ID_ZER: text[1] = 'Z'; text[2] = 'E'; text[3] = 'R'; break;
 			case CPT__INSTRUCTION_ID_CHA: text[1] = 'C'; text[2] = 'H'; text[3] = 'A'; break;

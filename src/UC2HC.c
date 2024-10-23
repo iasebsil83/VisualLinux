@@ -252,7 +252,7 @@ buffer* compile(char mode, buffer* UCContent) {
 	ulng currentLine_startIndex = 0ULL;
 	ulng lineNbr                = 1ULL;
 	ulng stringFirstIndex;
-	ushr pTypeFlag, header, pValue, b1, b2;
+	ushr pTypeFlag, header, pValue;
 	bool escaped, foundEnd;
 	for(ulng c=0ULL; c < UCContent->length; c++) {
 		if(input[c] == '\n') {
@@ -482,6 +482,88 @@ buffer* compile(char mode, buffer* UCContent) {
 
 					//add HC instruction !!!WARNING LITTLE ENDIAN BEHAVIOR
 					header = modeFlag | pTypeFlag | CPT__INSTRUCTION_ID_MUL;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = header & 0x00ff;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = header >> 8;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue & 0x00ff;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue >> 8;
+				break;
+
+
+
+				//read something into R0000
+				case 'R':
+					checkNotEnoughCharacters(lineNbr, paramLength, 1, "READ");
+
+					//case 1: resolve data symbol
+					if(input[currentLine_startIndex] == 'd') {
+						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "READ DATA ITEM SYMBOL NAME");
+						paramLength--;
+						checkNotEnoughCharacters(lineNbr, paramLength, 1, "READ DATA ITEM SYMBOL NAME"); //symbol name must have at least 1 character
+
+						//set parameter type & value
+						pTypeFlag = CPT__INSTRUCTION_PTYP_VALUE;
+						pValue    = getSymbol(
+							lineNbr,                      datTab,     DATA_TABLE_LENGTH,
+							input+currentLine_startIndex, paramLength
+						)->address;
+					}
+
+					//case 2: raw hex value (register or value)
+					else {
+						pTypeFlag = getPTypeFlag(lineNbr, input[currentLine_startIndex]);
+						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "READ DATA VALUE");
+						paramLength--;
+						checkNotEnoughCharacters(lineNbr, paramLength, 4, "READ DATA VALUE");
+						pValue = getWord(lineNbr, input+currentLine_startIndex, currentHCIndex);
+					}
+
+					//add HC instruction !!!WARNING LITTLE ENDIAN BEHAVIOR
+					header = modeFlag | pTypeFlag | CPT__INSTRUCTION_ID_REA;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = header & 0x00ff;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = header >> 8;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue & 0x00ff;
+					checkHCIndex(lineNbr, currentHCIndex);
+					output[currentHCIndex++] = pValue >> 8;
+				break;
+
+
+
+				//write R0000 somewhere
+				case 'W':
+					checkNotEnoughCharacters(lineNbr, paramLength, 1, "WRITE");
+
+					//case 1: resolve data symbol
+					if(input[currentLine_startIndex] == 'd') {
+						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "WRITE DATA ITEM SYMBOL NAME");
+						paramLength--;
+						checkNotEnoughCharacters(lineNbr, paramLength, 1, "WRITE DATA ITEM SYMBOL NAME"); //symbol name must have at least 1 character
+
+						//set parameter type & value
+						pTypeFlag = CPT__INSTRUCTION_PTYP_VALUE;
+						pValue    = getSymbol(
+							lineNbr,                      datTab,     DATA_TABLE_LENGTH,
+							input+currentLine_startIndex, paramLength
+						)->address;
+					}
+
+					//case 2: raw hex value (register or value)
+					else {
+						pTypeFlag = getPTypeFlag(lineNbr, input[currentLine_startIndex]);
+						currentLine_startIndex = increaseUnderLimit(lineNbr, currentLine_startIndex, 1ULL, c, "WRITE DATA VALUE");
+						paramLength--;
+						checkNotEnoughCharacters(lineNbr, paramLength, 4, "WRITE DATA VALUE");
+						pValue = getWord(lineNbr, input+currentLine_startIndex, currentHCIndex);
+					}
+
+					//add HC instruction !!!WARNING LITTLE ENDIAN BEHAVIOR
+					header = modeFlag | pTypeFlag | CPT__INSTRUCTION_ID_WRI;
 					checkHCIndex(lineNbr, currentHCIndex);
 					output[currentHCIndex++] = header & 0x00ff;
 					checkHCIndex(lineNbr, currentHCIndex);

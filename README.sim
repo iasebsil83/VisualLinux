@@ -231,18 +231,61 @@ p Additions and multiplications are associated to identifiers \mA\m and \mX\m. \
 They requires one parameter that will be the \u\bsecond\b\u operand of the calculation. \
 The first operand is taken from register \mR0000\m and result will then be stored in that same register.
 
-p As parameter, we can use both use \uvalues\u (\mv\m), \uregisters\u (\mr\m) or \udata items\u (\md\m) \
-that is nothing more than the static value stored at compiled time in a data item.
+p As parameter, we can use both use \uvalue\u (\mv\m), \uregister\u (\mr\m) or \udata item\u (\md\m) prefixes. \
+Note that in the last 2 cases, the parameter value will serve as address to take value from RAM.
 "
 ; R0 + R3 => R0
 A r0003
 
-; R0 * 2 => R0
+; THIS IS NOT "R0 * 2 => R0", BUT RATHER "R0 * value@adress[2] => R0"
 X v0002
+
+; If you want to use constant values, use static data items.
+; This does the job "R0 * 2 => R0" :
+D w0002 cst1
+X dcst1
 "
 
 
-t3 Print
+t3 UC : Read / Write with R0000
+
+p One really useful thing we can do in UC/HC is use the main temporary register R0000. \
+There are 2 UC instructions (and their HC equivalent) that allows you to read and write from/to R0000. \
+They have identifiers \mR\m and \mW\m respectively for \ureading\u and \uwriting\u into that register.
+
+p In both operations, you can either target a RAM element or one of the current registers. \
+As for additions and multplications, prefixes \mv\m, \mr\m and \md\m are allowed. \
+Same behavior for the 2 last cases.
+"
+; write R0 into R1
+W r0001
+
+; THIS IS NOT "5 => R0", BUT RATHER "value@adress[5] => R0"
+R v0005
+
+; If you want to use constant values, use static data items.
+; This does the job "5 => R0" :
+D w0005 cst1
+R dcst1
+"
+
+
+t3 UC : Load from storage
+
+p . \
+Identifier for this instruction is \mB\m (stands for "Binary load").
+
+p In both operations, you can either target a RAM element or one of the current registers. \
+As for additions and multplications, prefixes \mv\m, \mr\m and \md\m are allowed. \
+Same behavior for the 2 last cases.
+"
+; load myProgram from storage
+D "myProgram" programName
+B dprogramName
+"
+
+
+t3 UC : Print
 
 p This may be the simplest instruction in both UC & HC syntaxes, identified by character \mP\m here. \
 As most of the previous ones, it only requires one parameter that is the address in RAM of the text string to be printed on screen. \
@@ -333,13 +376,14 @@ Signed values can be used to jump backwards a certain number.
 \bOutput\b the last value from current stack into the given destination. \
 If parameter is a value (not register), use it as address to store result into memory.
 -
-- ID:6, Write from \uMemory\u (RAM)
-Write value stored in \bMemory\b (RAM) at the address stored in R0000 into the given destination. \
-If parameter is a value (not register), use it as another address to store result into memory.
+- ID:6, \uRead\u something to store in R0000
+\bRead\b value from given parameter and store it into R0000. \
+If parameter is a register, read value from it, else, use it as an address in memory to read from. \
+One full word will be read (2 bytes).
 -
-- ID:7, Write from current \uRegisters\u
-Write value from \bRegister\b at address stored in R0000 into the given destination. \
-If parameter is a value (not register), use it as an address to store result into memory. \
+- ID:7, \uWrite\u R0000 somewhere
+\bWrite\b value from register R0000 into the given destination. \
+If parameter is a register, store in targetted register, else use it as an address to store into memory. \
 Using this instruction with parameter R0000 is possible (but useless).
 -
 - ID:8, \uLoad\u from storage

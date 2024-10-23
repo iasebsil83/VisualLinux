@@ -236,15 +236,14 @@ void operateCPU(cpt* computer) {
 			else                                        { checkRAMAddress(rawValue);              ram[rawValue] = one; }
 		break;
 
-		//write from Memory
-		case CPT__INSTRUCTION_ID_MEM:
-			one = ram[r0];
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[rawValue] = one; }
-			else                                        { checkRAMAddress(rawValue);              ram[rawValue] = one; }
+		//read something into R0000
+		case CPT__INSTRUCTION_ID_REA:
+			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[0] = currentRegisters[rawValue]; }
+			else                                        { checkRAMAddress(rawValue); currentRegisters[0] =              ram[rawValue]; }
 		break;
 
-		//write into Register
-		case CPT__INSTRUCTION_ID_REG:
+		//write R0000 somewhere
+		case CPT__INSTRUCTION_ID_WRI:
 			one = getRegisterValue(currentRegisters, r0);
 			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[rawValue] = one; }
 			else                                        { checkRAMAddress(rawValue);              ram[rawValue] = one; }
