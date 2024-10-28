@@ -14,10 +14,11 @@
 #define CPT__INSTRUCTION_MODE_MASK     0x8000 //mode
 #define CPT__INSTRUCTION_MODE_KERNEL   0x8000
 #define CPT__INSTRUCTION_MODE_USER     0x0000
-#define CPT__INSTRUCTION_PTYP_MASK     0x4000 //parameter type
-#define CPT__INSTRUCTION_PTYP_REGISTER 0x4000
+#define CPT__INSTRUCTION_PTYP_MASK     0x6000 //parameter type
+#define CPT__INSTRUCTION_PTYP_MEMORY   0x4000
+#define CPT__INSTRUCTION_PTYP_REGISTER 0x2000
 #define CPT__INSTRUCTION_PTYP_VALUE    0x0000
-#define CPT__INSTRUCTION_ID_MASK       0x3fff //ID
+#define CPT__INSTRUCTION_ID_MASK       0x1fff //ID
 #define CPT__INSTRUCTION_ID_ADD        0x0000
 #define CPT__INSTRUCTION_ID_MUL        0x0001
 #define CPT__INSTRUCTION_ID_PRT        0x0002
@@ -30,6 +31,10 @@
 #define CPT__INSTRUCTION_ID_ZER        0x0009
 #define CPT__INSTRUCTION_ID_CHA        0x000a
 #define CPT__INSTRUCTION_ID_GPC        0x000b
+#define CPT__INSTRUCTION_ID_SUB        0x000c
+#define CPT__INSTRUCTION_ID_DIV        0x000d
+#define CPT__INSTRUCTION_ID_EQU        0x000e
+#define CPT__INSTRUCTION_ID_NEQ        0x000f
 
 //computer constants
 #define CPT__CPUMEMS_LENGTH            8    //number of CPU mems available

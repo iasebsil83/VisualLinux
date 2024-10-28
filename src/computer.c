@@ -174,113 +174,97 @@ ushr stackPop(ushr* stack) {
 
 //operate CPU
 void operateCPU(cpt* computer) {
+
+	//current elements
 	cpuMem* currentCpuMem    = computer->cpuMems[computer->currentCpuMemIndex];
 	ushr*   currentRegisters = currentCpuMem->registers;
 	ushr*   currentStack     = currentCpuMem->stack;
 	ushr*   ram              = computer->ram;
+	ushr    r0               = currentRegisters[0];
 
 	//decompose current HC instruction
 	ushr header = ram[computer->currentInstructionIndex];
 	ushr mode   = header & CPT__INSTRUCTION_MODE_MASK;
 	ushr pType  = header & CPT__INSTRUCTION_PTYP_MASK;
 	ushr id     = header & CPT__INSTRUCTION_ID_MASK;
-	ushr rawValue = ram[computer->currentInstructionIndex+1];
-	ushr registerValue = 0;
-	if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { registerValue = getRegisterValue(currentRegisters, rawValue); }
+
+	//address of the given parameter itself
+	ushr* rawValueAddress = ram + (computer->currentInstructionIndex+1);
+	ushr  rawValue        = rawValueAddress[0];
+
+	//get target
+	ushr* target = 0;
+	switch(pType) {
+		case CPT__INSTRUCTION_PTYP_VALUE:
+			target = rawValueAddress;
+		break;
+		case CPT__INSTRUCTION_PTYP_REGISTER:
+			checkRAMAddress(rawValue);
+			target = ram + rawValue;
+		break;
+		case CPT__INSTRUCTION_PTYP_MEMORY:
+			if(rawValue >= CPT__CPUMEM_REGISTERS_LENGTH) {
+				fprintf(stderr, "Invalid register address %i (maximum %i allowed).", rawValue, CPT__CPUMEM_REGISTERS_LENGTH-1);
+				exit(EXIT_FAILURE);
+			}
+			target = currentRegisters + rawValue;
+		break;
+	}
+	ushr targetValue = target[0];
 
 	//redirections
 	char* filename;
-	ushr one;
-	ushr r0 = currentRegisters[0];
 	switch(id){
 
-		//add
-		case CPT__INSTRUCTION_ID_ADD:
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            one = registerValue; }
-			else                                        { checkRAMAddress(rawValue); one = ram[rawValue]; }
-			currentRegisters[0] = r0 + one;
-		break;
-
-		//multiply
-		case CPT__INSTRUCTION_ID_MUL:
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            one = registerValue; }
-			else                                        { checkRAMAddress(rawValue); one = ram[rawValue]; }
-			currentRegisters[0] = r0 * one;
-		break;
+		//arithmetic
+		case CPT__INSTRUCTION_ID_ADD: currentRegisters[0] = r0 + targetValue; break;
+		case CPT__INSTRUCTION_ID_SUB: currentRegisters[0] = r0 - targetValue; break;
+		case CPT__INSTRUCTION_ID_MUL: currentRegisters[0] = r0 * targetValue; break;
+		case CPT__INSTRUCTION_ID_DIV: currentRegisters[0] = r0 / targetValue; break;
 
 		//print
-		case CPT__INSTRUCTION_ID_PRT:
-			one = rawValue;
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
-			writeOnScreen(computer->screen, readStringFromRAM(ram, one));
-		break;
+		case CPT__INSTRUCTION_ID_PRT: writeOnScreen(computer->screen, readStringFromRAM(ram, targetValue)); break;
 
-		//jump
-		case CPT__INSTRUCTION_ID_JMP:
-			one = rawValue;
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
-			computer->currentInstructionIndex += one/2 - 2; //shift -2 to take into account the auto-increment
-		break;
+		//instruction location (shift -2 to take into account the auto-increment)
+		case CPT__INSTRUCTION_ID_JMP: computer->currentInstructionIndex += targetValue/2 - 2; break;
+		case CPT__INSTRUCTION_ID_GPC: target[0] = computer->currentInstructionIndex; break;
 
-		//input to stack
-		case CPT__INSTRUCTION_ID_INP:
-			one = rawValue;
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
-			stackPush(currentStack, one);
-		break;
+		//stack
+		case CPT__INSTRUCTION_ID_INP: stackPush(currentStack, targetValue); break;
+		case CPT__INSTRUCTION_ID_OUP: target[0] = stackPop(currentStack); break;
 
-		//output from stack
-		case CPT__INSTRUCTION_ID_OUP:
-			one = stackPop(currentStack);
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[rawValue] = one; }
-			else                                        { checkRAMAddress(rawValue);              ram[rawValue] = one; }
-		break;
-
-		//read something into R0000
-		case CPT__INSTRUCTION_ID_REA:
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[0] = currentRegisters[rawValue]; }
-			else                                        { checkRAMAddress(rawValue); currentRegisters[0] =              ram[rawValue]; }
-		break;
-
-		//write R0000 somewhere
-		case CPT__INSTRUCTION_ID_WRI:
-			one = getRegisterValue(currentRegisters, r0);
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[rawValue] = one; }
-			else                                        { checkRAMAddress(rawValue);              ram[rawValue] = one; }
-		break;
+		//read/write with R0000
+		case CPT__INSTRUCTION_ID_REA: currentRegisters[0] = targetValue; break;
+		case CPT__INSTRUCTION_ID_WRI:           target[0] =          r0; break;
 
 		//load
 		case CPT__INSTRUCTION_ID_LOA:
-			one = rawValue;
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
 			filename = readStringFromRAM(ram, r0);
-			loadFromStorage(ram, one, filename);
+			loadFromStorage(ram, targetValue, filename);
 			free(filename);
 		break;
 
 		//zero
 		case CPT__INSTRUCTION_ID_ZER:
-			one = rawValue;
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
-			for(ushr i=0; i < one; i++) { ram[r0+i] = 0; }
+			for(ushr i=0; i < targetValue; i++) {
+				ushr addr = r0 + i;
+				checkRAMAddress(addr);
+				ram[addr] = 0;
+			}
 		break;
 
 		//change CPU mem
 		case CPT__INSTRUCTION_ID_CHA:
-			one = rawValue;
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) { one = registerValue; }
-			if(one > CPT__CPUMEMS_LENGTH) {
-				fprintf(stderr, "Computer: Invalid CPUMEM index given %i (maximum allowed is %i).", one, CPT__CPUMEMS_LENGTH-1);
+			if(targetVAlue > CPT__CPUMEMS_LENGTH) {
+				fprintf(stderr, "Computer: Invalid CPUMEM index given %i (maximum allowed is %i).", targetValue, CPT__CPUMEMS_LENGTH-1);
 				exit(EXIT_FAILURE);
 			}
-			computer->currentCpuMemIndex = one;
+			computer->currentCpuMemIndex = targetValue;
 		break;
 
-		//get Program Counter
-		case CPT__INSTRUCTION_ID_GPC:
-			if(pType == CPT__INSTRUCTION_PTYP_REGISTER) {                            currentRegisters[rawValue] = computer->currentInstructionIndex; }
-			else                                        { checkRAMAddress(rawValue);              ram[rawValue] = computer->currentInstructionIndex; }
-		break;
+		//conditionnal (skip next instruction if false)
+		case CPT__INSTRUCTION_ID_EQU: if(r0 != targetValue) { computer->currentInstructionIndex += 2; } break;
+		case CPT__INSTRUCTION_ID_NEQ: if(r0 == targetValue) { computer->currentInstructionIndex += 2; } break;
 
 		//undefined instruction
 		default:

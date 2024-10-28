@@ -345,9 +345,9 @@ Each instruction is composed of some identification information (header) and a v
 Here is what is inside an HC instruction exactly :
 
 p The first bit is the \umode\u of that instruction, 0:user, 1:kernel. \
-Then, another individual bit gives the information whether the following parameter will concern \
-a literal value (0) or rather target a register (1). \
-The next 14 bits are used to give the instruction ID (explained a few paragraphs below). \
+Then, the 2 next bits gives the information whether the following parameter will concern \
+a literal value (00), target a register (01), or a RAM address (10, last value 11 is not used). \
+The next 13 bits are used to give the instruction ID (explained a few paragraphs below). \
 Finally, as you might have guessed, the remaining 16 bits forms the parameter value to be used with that instruction.
 
 p There is no separator between HC instructions. \
@@ -399,6 +399,14 @@ Fill the given number of words in RAM with \bZ\beros starting from the address s
 - ID:11, \uGet\u program counter
 \bG\bet program counter at current position and store it into given destination. \
 If parameter is a value (not register), use it as address to store result into memory.
+-
+- ID:12, \uSubtraction\u
+Perform a \bSubtraction\b between registers R0000 and given parameter and write result into R0000. \
+If parameter is a value (not register), use it as an address to get value from RAM.
+-
+- ID:13, \uDivision\u
+Perform a \bDivision\b between registers R0000 and given parameter and write result into R0000. \
+If parameter is a value (not register), use it as an address to get value from RAM.
 -
 
 
