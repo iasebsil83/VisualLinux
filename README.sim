@@ -144,13 +144,41 @@ p You see here that \b\uw\u\bord data items \u\cff0000must\c\u be expressed unde
 Strings can be anything as long as it ends with an non-escaped string terminator \m"\m. \
 Data item names must be only made of characters (lowercase & uppercase) and underscores.
 
-p Note that a terminator character will be added to the string when stored into HC file or when loaded in memory at runtime. \
+p Note that a \mx00\m terminator character will be added to the string when stored into HC file or when loaded in memory at runtime. \
 Also, unlike regular "variables" that we can see in lots of programming languages, \
 data items here can be used / called / referenced (use the term you want) at any location in the code. \
 Those elements are \ustatic\u data that are accessible from the beginning of the code to the very end \
 (considering that your kernel does respect your user space).
 
-p For more information about how those data items can be used at runtime (addresses, read / write / execute permissions...), \
+
+t3 Pseudo-relative addressing
+
+p When dealing with both local and global elements in an operating system, things can quickly become heavy and complicated. \
+Here we told about data items in UC programs that can be accessed within our code. \
+However, our code will certainly have to call for the kernel to do some extra things out of its scope (basically syscalls). \
+That means, we must be able to get outside of our user program scope using global memory locations in RAM for example. \
+Another complication is that user programs will be loaded into RAM by a "kernel program" depending on its logic. \
+That means sometimes, we can only use relative memory addressing in our user code to correctly target the elements we want in our program scope.
+
+p To solve this, several methods exists, more or less complicated relying on relativeness strategy or pseudo-external calls for example. \
+There is an important thing to consider with UC/HC data items : \bpseudo-relative\b addressing. \
+That means several things. \
+Before all, you must know that an HC file does not really contain data items information. \
+The only things remaining in the resulting program are memory addresses directly accessed using memory prefixes \
+(\mm\m, we will see this later). \
+Every memory address is computed \b\urelatively to the first instruction\u\b. \
+However, when loaded into RAM, every addresses will be computed to become absolute.
+
+p This concept is very important : let's dive a bit into this. \
+For technical reasons, the first data item declared in an HC program is located to address 4 (\m0004\m). \
+In the resulting HC program, this first data item will be addressed using that "program-relative" address 4. \
+However, when program will be loaded into RAM to a certain position, every reference to that data item must now target the absolute address of that element. \
+Considering we loaded our program at RAM address N, every reference to our first data item will now become N+4.
+
+p This relative-to-absolute addressing process is made automatically by VisualLinux itself. \
+This could have been computed by hand as part of the UC kernel program as well. \
+But for simplicity reasons, I decided to include that transformation into the loading process. \
+For more information about how those data items can be used at runtime (addresses, read / write / execute permissions...), \
 please check out the next chapter about the HC syntax. \
 You should easilly guess what can or cannot be done with it.
 
@@ -159,13 +187,15 @@ t3 UC : Labels & Jumps
 
 p One \ureally\u helpful UC & HC instruction is the \b\uJ\u\bump, identified by the \mJ\m character. \
 This allows you to jump to a specific location in the code. \
-The instruction takes only one parameter starting with a type prefix \mv\m, \mr\m, \ml\m and \md\m standing for "value", "register", "label" and "data item".
+The instruction takes only one parameter starting with a type prefix \mv\m, \mr\m, \mm\m, \ml\m and \md\m respectively \
+standing for "\bv\balue", "\br\begister", "\bm\bemory", "\bl\babel" and "\bd\bata item".
 
-p Jumping to a value is the simplest one : the four next characters in our parameter must be hexadecimal digits \
-that corresponds to the location to go to relatively to the current position. \
-For register jumping, the principle is the same except that the four digits now refers to the current CPU register with that ID \
-so we will jump according to the value stored to that register. \
-The jump is still made relatively to the current execution position.
+p As for most of the UC instructions, the four characters following our prefix must be hexadecimal digits making it a parameter. \
+For "value" jumping, this value is used to jump \urelatively to the current position\u. \
+Keep in mind that it only concerns "value" jumps ! \
+For every other jumping, the parameter is used to jump to an absolute memory address in RAM. \
+For example, register jumping uses its parameter to go to the address currently stored in the targetted register. \
+In that second case, the jump concerns an absolute address in RAM.
 "
 ; Some instructions
 # instruction1
@@ -173,56 +203,60 @@ The jump is still made relatively to the current execution position.
 # instruction3
 # instruction4
 
-; jumping back to instruction3 (fffe = -2)
+; jumping back to instruction3 (fffe = -2) : RELATIVE JUMP because "v" used
 J vfffe
 
 ; same example using registers, considering that register R3 currently has value fffd (= -3) stored
+; Actually, we will not go 3 instructions above (as before), but directly in address fffd in RAM : ABSOLUTE JUMP
 J r0003
 "
-p This seems to be useful sometimes but in practice, it is easy to make mistakes espacially when using value jumping. \
-Counting instruction indexes is not that simple. \
+p This relativity in value jumping seems to be very useful at first sight but in practice, \
+it is really easy to make mistakes : Counting instruction indexes is not that simple. \
 At runtime and you may have surprises because the number of instructions you counted was not good in the resulting HC code.
 
-p The thing is that jumps must be done over a number of \b\uHC\u\b instructions and not over a number of \b\uUC\u\b instructions. \
-Indeed, some UC instructions such as Data Items or Labels does \u\cff0000not\c\u produce HC instructions at all. \
-A fair and secure way to use jumps in UC is to use register parameter when having previously stored in it the current execution position \
-(in order to get back when we left) or use label jumping (that we will see now).
+p The thing is that relative jumps must be done over a number of \b\uHC\u\b instructions and not over a number of \b\uUC\u\b instructions. \
+Indeed, some UC instructions does \u\cff0000not\c\u produce HC instructions at all and some other do produce several HC instructions as well. \
+A fair and secure way to use relative jumps in UC is to actually use absolute jumps with registers, \
+considering you have previously stored your current execution position. \
+By doing so, you can get back where you left, \uor\u you can use label jumping.
 
-p As we said, another way to jump to somewhere interesting in our program is using labels. \
-Labels are fictive locations not appearing in the resulting HC code that targets a specific location in the code. \
+p Labels are fictive locations, not appearing in the resulting HC program, that targets a specific location in the code. \
 These are UC instructions with the identifier \mL\m that only takes in parameter a label name :
 "
-l my_first_custom_label
+L my_first_custom_label
 # ins1
 # ins2
 # ins3
 
-l my_second_custom_label
+L my_second_custom_label
 # ins4
 # ins5
 "
 p Label names have the same rules as data item names. \
-A jump to a given label only consist of giving the name of the label to go to. \
-In the resulting HC code, this instruction will be replaced by a value jump with the correct amount of lines automatically computed.
+We jump to a given label by using the \ml\m prefix followed by the label name. \
+In the resulting HC code, this instruction will be replaced by a value (=relative) jump with the correct position automatically computed.
 "
-l my_custom_label
+L my_custom_label
 # ins1
 # ins2
 # ins3
 
-; go back to ins1
-jmp lmy_custom_label
+; go back to ins1 (we don't care how many HC instructions we will finally have between our label and here)
+J lmy_custom_label
 "
-p The last thing we did not cover is the data item jumping (using the \md\m prefix). \
-This one is nothing more than a shortcut to make a value jump using the value stored in a static data item. \
-The parameter must contain the name of the data item to target and the value will be set into at compile time.
+p The last 2 cases we did not cover yet concern memory jumping. \
+By using the \mm\m prefix, the distance we will jump will be read from a specific memory address. \
+As for register and label jumps, this one is also an absolute jump. \
+The parameter value also targets an absolute memory address.
 
-p At first sight, we could think about "value" jumps as a useful way to get outside the user code \
-such as using specific kernel locations for syscalls... \
-This may not be that simple. \
-Keep in mind that jumps are \bALWAYS\b made \urelatively\u to the current position. \
-Depending on where your kernel will load your program in RAM, you may not be able to know where to jump to reach that special location. \
-However, by using some smart mechanisms, this can be done in various ways such as in the examples given.
+p The data item prefix \md\m does operate the same kind of memory jump except that the memory address will be read \
+from a static data item instead of being directly given as parameter. \
+A very important thing to consider here is that working with data items like this implies the use of register R0. \
+Infact, the UC instruction will be decomposed in 2 HC instructions :
+- First : Temporarily get the value of the targetted data item to store it into R0.
+-
+- Then : Jump to the address stored into R0
+-
 
 
 t3 UC : Add / Multiply

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 //computer structures
 #include "computer.h"
@@ -58,6 +59,10 @@ cpt* computerAccess(cpt* access) {
 //events
 void S2DE_event(int event){
 	cpt* computer = computerAccess(GET);
+	const ubyt NONE = '\x00';
+	const ubyt LEFT = '\x01';
+	const ubyt RIGHT = '\x02';
+	static ubyt moving = NONE;
 	switch(event){
 		case S2DE_DISPLAY:
 			S2DE_setThickness(DT__GLOBAL_THICKNESS);
@@ -70,36 +75,57 @@ void S2DE_event(int event){
 			displayScreen(DT__SCREEN_X, DT__SCREEN_Y, computer);
 
 			//current instruction
-			displayCurrentSupervisedInstruction(DT__CURRENT_INSTRUCTION_X, DT__CURRENT_INSTRUCTION_Y, computer);
+			displaySupervisedInstruction(DT__CURRENT_INSTRUCTION_X, DT__CURRENT_INSTRUCTION_Y, computer);
 		break;
 
 		case S2DE_KEYBOARD:
-			if(S2DE_keyState == S2DE_KEY_PRESSED) {
-				switch(S2DE_key){
+			switch(S2DE_keyState) {
 
-					//move backward one step
-					case S2DE_KEY_LEFT: case S2DE_KEY_UP:
-						if(computer->currentSupervisedInstructionIndex > 0) { computer->currentSupervisedInstructionIndex--; S2DE_refresh(); }
-					break;
+				//pressed
+				case S2DE_KEY_PRESSED:
+					switch(S2DE_key){
 
-					//move forward one step
-					case S2DE_KEY_RIGHT: case S2DE_KEY_DOWN:
-						if(computer->currentSupervisedInstructionIndex < CPT__RAM_LENGTH-1) { computer->currentSupervisedInstructionIndex++; S2DE_refresh(); }
-					break;
+						//move backward one step
+						case S2DE_KEY_LEFT: case S2DE_KEY_UP: moving = LEFT; break;
 
-					//execute current instruction
-					case S2DE_KEY_RETURN: operateCPU(computer); S2DE_refresh(); break;
-				}
+						//move forward one step
+						case S2DE_KEY_RIGHT: case S2DE_KEY_DOWN: moving = RIGHT; break;
+
+						//execute current instruction
+						case S2DE_KEY_RETURN: cpt__operateCPU(computer); S2DE_refresh(); break;
+					}
+				break;
+
+				//released
+				case S2DE_KEY_RELEASED:
+					switch(S2DE_key){
+						case S2DE_KEY_LEFT:  case S2DE_KEY_UP:
+						case S2DE_KEY_RIGHT: case S2DE_KEY_DOWN: moving = NONE; break;
+					}
+				break;
 			}
 		break;
 
 		case S2DE_MOUSE_CLICK:
 		break;
+
 		case S2DE_MOUSE_MOVE:
 		break;
+
 		case S2DE_RESIZE:
 		break;
+
 		case S2DE_TIMER:
+			switch(moving) {
+				case LEFT:
+					if(computer->supervisionIndex > 0) { computer->supervisionIndex--; S2DE_refresh(); }
+					usleep(100000);
+				break;
+				case RIGHT:
+					if(computer->supervisionIndex < CPT__RAM_LENGTH-1) { computer->supervisionIndex++; S2DE_refresh(); }
+					usleep(100000);
+				break;
+			}
 		break;
 	}
 }
@@ -130,29 +156,29 @@ int main(int argc, char **argv) {
 	cpt* computer = computerAccess( newComputer(argv[1]) );
 
 	//load kernel program
-	loadKernel(computer);
+	cpt__loadKernel(computer);
 
 	//tmp
-	writeOnScreen(computer->screen, "Hello");
-	writeOnScreen(computer->screen, "My name is Seb");
-	writeOnScreen(computer->screen, "Nice to meeet you");
-	writeOnScreen(computer->screen, "I am a screen");
-	writeOnScreen(computer->screen, "You can use me as I use quite long words");
-	writeOnScreen(computer->screen, "One two, one two...");
-	writeOnScreen(computer->screen, "This is a test");
-	writeOnScreen(computer->screen, "What a wonderful night it is");
-	writeOnScreen(computer->screen, "visualizing Linux kernel exe");
-	writeOnScreen(computer->screen, "in a more more visual way !");
-	writeOnScreen(computer->screen, "Hello");
-	writeOnScreen(computer->screen, "My name is Seb");
-	writeOnScreen(computer->screen, "Nice to meeet you");
-	writeOnScreen(computer->screen, "I am a screen");
-	writeOnScreen(computer->screen, "You can use me as I use quite long words");
-	writeOnScreen(computer->screen, "One two, one two...");
-	writeOnScreen(computer->screen, "This is a test");
-	writeOnScreen(computer->screen, "What a wonderful night it is");
-	writeOnScreen(computer->screen, "visualizing Linux kernel exe");
-	writeOnScreen(computer->screen, "in a more more visual way !");
+	cpt__writeOnScreen(computer, "Hello");
+	cpt__writeOnScreen(computer, "My name is Seb");
+	cpt__writeOnScreen(computer, "Nice to meeet you");
+	cpt__writeOnScreen(computer, "I am a screen");
+	cpt__writeOnScreen(computer, "You can use me as I use quite long words");
+	cpt__writeOnScreen(computer, "One two, one two...");
+	cpt__writeOnScreen(computer, "This is a test");
+	cpt__writeOnScreen(computer, "What a wonderful night it is");
+	cpt__writeOnScreen(computer, "visualizing Linux kernel exe");
+	cpt__writeOnScreen(computer, "in a more more visual way !");
+	cpt__writeOnScreen(computer, "Hello");
+	cpt__writeOnScreen(computer, "My name is Seb");
+	cpt__writeOnScreen(computer, "Nice to meeet you");
+	cpt__writeOnScreen(computer, "I am a screen");
+	cpt__writeOnScreen(computer, "You can use me as I use quite long words");
+	cpt__writeOnScreen(computer, "One two, one two...");
+	cpt__writeOnScreen(computer, "This is a test");
+	cpt__writeOnScreen(computer, "What a wonderful night it is");
+	cpt__writeOnScreen(computer, "visualizing Linux kernel exe");
+	cpt__writeOnScreen(computer, "in a more more visual way !");
 
 	//a bit of aesthetics
 	S2DE_background_red   = DT__COLOR_BACKGROUND_R;
@@ -162,6 +188,7 @@ int main(int argc, char **argv) {
 	//launch window
 	S2DE_init(argc,argv, WINDOW_TITLE_TEXT, DT__WINDOW_WIDTH, DT__WINDOW_HEIGHT);
 	S2DE_fullScreen();
+	S2DE_setTimer(30);
 	S2DE_start();
 
 	//nothing went wrong

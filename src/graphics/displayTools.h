@@ -19,12 +19,18 @@
 #define DT__TITLE_HEIGHT_OFFSET 20
 
 //data boxes
-#define DT__DATA_BOX_HALFWIDTH          5
-#define DT__DATA_BOX_ASSUMED_TEXTWIDTH  35
-#define DT__DATA_BOX_ASSUMED_TEXTHEIGHT 10
-#define DT__DATA_BOX_HALFHEIGHT          6
-#define DT__DATA_BOX_WIDTH              (2*DT__DATA_BOX_HALFWIDTH + DT__DATA_BOX_ASSUMED_TEXTWIDTH)
-#define DT__DATA_BOX_HEIGHT             (2*DT__DATA_BOX_HALFHEIGHT+ DT__DATA_BOX_ASSUMED_TEXTHEIGHT)
+#define DT__BYTE_BOX_HALFWIDTH          5
+#define DT__BYTE_BOX_ASSUMED_TEXTWIDTH  18
+#define DT__BYTE_BOX_ASSUMED_TEXTHEIGHT 10
+#define DT__BYTE_BOX_HALFHEIGHT          6
+#define DT__BYTE_BOX_WIDTH              (2*DT__BYTE_BOX_HALFWIDTH + DT__BYTE_BOX_ASSUMED_TEXTWIDTH)
+#define DT__BYTE_BOX_HEIGHT             (2*DT__BYTE_BOX_HALFHEIGHT+ DT__BYTE_BOX_ASSUMED_TEXTHEIGHT)
+#define DT__WORD_BOX_HALFWIDTH          5
+#define DT__WORD_BOX_ASSUMED_TEXTWIDTH  35
+#define DT__WORD_BOX_ASSUMED_TEXTHEIGHT 10
+#define DT__WORD_BOX_HALFHEIGHT          6
+#define DT__WORD_BOX_WIDTH              (2*DT__WORD_BOX_HALFWIDTH + DT__WORD_BOX_ASSUMED_TEXTWIDTH)
+#define DT__WORD_BOX_HEIGHT             (2*DT__WORD_BOX_HALFHEIGHT+ DT__WORD_BOX_ASSUMED_TEXTHEIGHT)
 
 //HC instructions
 #define DT__MAX_INSTRUCTIONS_PER_COLUMN       31
@@ -42,7 +48,7 @@
 #define DT__CPUMEM_SELECTION_SHIFT_Y   5
 
 //ram
-#define DT__MAX_RAM_WORD_PER_COLUMN 47
+#define DT__MAX_RAM_BYTE_PER_COLUMN 47
 #define DT__RAM_PC_SHIFT_X           3 //program counter
 #define DT__RAM_PC_SHIFT_Y           5
 #define DT__RAM_SPC_SHIFT_X          5 //supervised program counter
@@ -143,17 +149,18 @@
 // ---------------- TOOLS ----------------
 
 //generic
-void drawShort(int x, int y, unsigned short s);
+void drawByte(int x, int y, ubyt b);
+void drawShort(int x, int y, ushr s);
 
 //CPU
-void displayCPUMems(int x, int y, cpt* computer);
-void displayRAM(int x, int y, cpt* computer);
+void displayCPUMems(int x, int y, cpt* c);
+void displayRAM(int x, int y, cpt* c);
 
 //virtual screen
-void displayScreen(int x, int y, cpt* computer);
+void displayScreen(int x, int y, cpt* c);
 
 //current instruction
-void displayCurrentSupervisedInstruction(int x, int y, cpt* computer);
+void displaySupervisedInstruction(int x, int y, cpt* c);
 
 
 

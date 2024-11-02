@@ -8,8 +8,8 @@
 // ---------------- DECLARATIONS ----------------
 
 //useful
+typedef unsigned char      ubyt;
 typedef unsigned short     ushr;
-typedef unsigned int       uint;
 typedef unsigned long long ulng;
 typedef struct {
 	char* data;
